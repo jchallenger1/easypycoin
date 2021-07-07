@@ -1,16 +1,36 @@
-# This is a sample Python script.
+from datetime import datetime
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import hashlib
+
+"""
+Class to represent a transaction inside a block
+The public key is the address of the user
+"""
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+class Transaction:
 
+    def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount):
+        self.sender_public_key = sender_public_key
+        self.sender_private_key = sender_private_key
+        self.recipient_public_key = recipient_public_key
+        self.amount = amount
+        self.timestamp = datetime.now()
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+    def to_dict(self):
+        return {"sender_public_key": self.sender_public_key,
+                "recipient_public_key": self.recipient_public_key,
+                "amount": self.amount,
+                "timestamp": self.timestamp}
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    def sign(self):
+        return self.sender_private_key.sign(
+            str(self.to_dict()).encode("ascii"),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
