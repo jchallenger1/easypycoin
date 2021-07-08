@@ -1,7 +1,9 @@
+import binascii
 import uuid
 from datetime import datetime
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat, NoEncryption
 
 import hashlib
 
@@ -70,3 +72,23 @@ class Block:
             if transaction.is_valid():
                 is_all_valid = False
         return is_all_valid
+
+
+class Wallet:
+    def __init__(self, generate_keys=True):
+        if generate_keys:
+            self.private_key = rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=2048
+            )
+            self.public_key = self.private_key.public_key()
+        else:
+            self.private_key = self.public_key = None
+
+    def keys_to_bytes(self):
+        return (self.private_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption()),
+                self.public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo))
+
+    def keys_to_ascii(self):
+        return tuple(binascii.hexlify(key).decode("ascii") for key in self.keys_to_bytes())
+
