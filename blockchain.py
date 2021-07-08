@@ -19,7 +19,7 @@ class Transaction:
     # amount = floating point
     def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount):
         self.sender_public_key = sender_public_key
-        self.sender_private_key = sender_private_key
+        self._sender_private_key = sender_private_key
         self.recipient_public_key = recipient_public_key
         self.amount = amount
         self.timestamp = datetime.now()
@@ -37,7 +37,7 @@ class Transaction:
 
     # Function creates a signature of this transaction, signed by the private key of the sender
     def sign(self) -> bytes:
-        return self.sender_private_key.sign(
+        return self._sender_private_key.sign(
             str(self).encode("ascii"),
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
@@ -85,22 +85,37 @@ class Wallet:
         else:
             self.private_key = self.public_key = None
 
-    def __init__(self, private_key, public_key):
-        self.private_key = Wallet.ascii_key_to_crypto_key(private_key)
-        self.public_key = Wallet.ascii_key_to_crypto_key(public_key)
+    # Function creates a new Wallet object with private/public keys given in an ascii format
+    @classmethod
+    def from_ascii_keys(cls, private_key, public_key):
+        wallet = cls(False)
+        wallet.private_key = Wallet.serialize_ascii_private_key(private_key)
+        wallet.public_key = Wallet.serialize_ascii_public_key(public_key)
+        return wallet
 
+    @classmethod
+    def from_binary_keys(cls, private_key, public_key):
+        wallet = cls(False)
+        wallet.private_key = serialization.load_der_private_key(private_key, None)
+        wallet.public_key = serialization.load_der_public_key(public_key)
+        return wallet
+
+    # Function loads an ascii key to form a cryptography.hazmat RSA public key
     @staticmethod
     def serialize_ascii_public_key(ascii_key):
         return serialization.load_der_public_key(binascii.unhexlify(ascii_key))
 
+    # Function loads an ascii key to form a cryptography.hazmat RSA private key
     @staticmethod
     def serialize_ascii_private_key(ascii_key, password=None):
-        return serialization.load_der_private_key(binascii.unhexlify(ascii_key, password))
+        return serialization.load_der_private_key(binascii.unhexlify(ascii_key), password)
 
+    # Function returns both (private key, public key) pair in bytes
     def keys_to_bytes(self):
         return (self.private_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption()),
                 self.public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo))
 
+    # Function returns both (private key,public key) pair in an ascii encoding
     def keys_to_ascii(self):
         return tuple(binascii.hexlify(key).decode("ascii") for key in self.keys_to_bytes())
 
