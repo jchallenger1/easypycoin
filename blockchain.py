@@ -1,7 +1,7 @@
 import binascii
 import uuid
 from datetime import datetime
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat, NoEncryption
 
@@ -84,6 +84,18 @@ class Wallet:
             self.public_key = self.private_key.public_key()
         else:
             self.private_key = self.public_key = None
+
+    def __init__(self, private_key, public_key):
+        self.private_key = Wallet.ascii_key_to_crypto_key(private_key)
+        self.public_key = Wallet.ascii_key_to_crypto_key(public_key)
+
+    @staticmethod
+    def serialize_ascii_public_key(ascii_key):
+        return serialization.load_der_public_key(binascii.unhexlify(ascii_key))
+
+    @staticmethod
+    def serialize_ascii_private_key(ascii_key, password=None):
+        return serialization.load_der_private_key(binascii.unhexlify(ascii_key, password))
 
     def keys_to_bytes(self):
         return (self.private_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption()),
