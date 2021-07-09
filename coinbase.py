@@ -1,14 +1,17 @@
 from flask import Flask, jsonify, request
-import blockchain
+from blockchain import Wallet, Transaction, BlockChain
+import blockchain as crypto
 import json
 
 app = Flask(__name__)
+
+blockchain = BlockChain()
 
 
 # Endpoint creates a new wallet by providing returning a new public/private RSA key pair
 @app.route("/api/wallet/new", methods=["GET"])
 def create_new_wallet():
-    wallet = blockchain.Wallet()
+    wallet = crypto.Wallet()
     private_key, public_key = wallet.keys_to_ascii()
     response = {
         "private_key": private_key,
@@ -23,17 +26,24 @@ def generate_transaction():
     json_req = request.json
     if json_req is None:
         return "Missing JSON POST request data", 400
+
     sender_public_key = json_req["sender_public_key"]
     sender_private_key = json_req["sender_private_key"]
     recipient_public_key = json_req["recipient_public_key"]
     amount = json_req["amount"]
-    wallet = blockchain.Wallet.from_ascii_keys(sender_private_key, sender_public_key)
 
-    transaction = blockchain.Transaction(wallet.public_key, wallet.private_key, recipient_public_key, amount)
+    wallet = Wallet.from_ascii_keys(sender_private_key, sender_public_key)
+    transaction = Transaction(wallet.public_key, wallet.private_key,
+                              crypto.ascii_key_to_public_key(recipient_public_key), amount)
+    signature = transaction.sign()
     response = {
-        "transaction": transaction.to_dict(),
-        "signature": transaction.sign()
+        "transaction": transaction.to_ascii_dict(),
+        "signature": crypto.binary_to_ascii(signature)
     }
+    # Important to not store the private key of the sender to the blockchain
+    transaction.sender_private_key = None
+    blockchain.add_transaction(transaction, signature)
+
     return jsonify(response), 200
 
 

@@ -19,25 +19,36 @@ class Transaction:
     # amount = floating point
     def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount):
         self.sender_public_key = sender_public_key
-        self._sender_private_key = sender_private_key
+        self.sender_private_key = sender_private_key
         self.recipient_public_key = recipient_public_key
         self.amount = amount
         self.timestamp = datetime.now()
+        self.uuid = uuid.uuid4()
 
     # Function returns a dictionary of this transaction, without the private key
-    def to_dict(self) -> dict:
+    def to_binary_dict(self) -> dict:
         return {"sender_public_key": self.sender_public_key,
                 "recipient_public_key": self.recipient_public_key,
                 "amount": self.amount,
-                "timestamp": self.timestamp}
+                "timestamp": self.timestamp,
+                "uuid": self.uuid}
+
+    def to_ascii_dict(self) -> dict:
+        return {"sender_public_key": binary_to_ascii(
+                    self.sender_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
+                "recipient_public_key": binary_to_ascii(
+                    self.recipient_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
+                "amount": self.amount,
+                "timestamp": self.timestamp,
+                "uuid": self.uuid}
 
     # Function converts this object to a string, without the private key
     def __str__(self) -> str:
-        return str(self.to_dict())
+        return str(self.to_ascii_dict())
 
     # Function creates a signature of this transaction, signed by the private key of the sender
     def sign(self) -> bytes:
-        return self._sender_private_key.sign(
+        return self.sender_private_key.sign(
             str(self).encode("ascii"),
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
@@ -52,7 +63,6 @@ class Transaction:
 
 class Block:
     def __init__(self, transactions, previous_block_hash):
-        self.block_ID = uuid.uuid4()
         self.transactions = transactions
         self.proof_of_work = 0
         self.previous_block_hash = previous_block_hash
@@ -61,7 +71,6 @@ class Block:
         hash_creator = hashlib.sha256()
         for transaction in self.transactions:
             hash_creator.update(str(transaction).encode("ascii"))
-        hash_creator.update(self.block_ID)
         hash_creator.update(self.previous_block_hash)
         hash_creator.update(self.proof_of_work)
         return hash_creator.digest()
@@ -73,13 +82,27 @@ class Block:
                 is_all_valid = False
         return is_all_valid
 
+class BlockChain:
+    def __init__(self):
+        self.transactions = []
+        self.chain = []
+        self.nodes = set()
+        self.node_uuid = uuid.uuid4()
+
+    def create_block(self):
+        pass
+
+    def add_transaction(self, transaction, transaction_signature):
+
+        pass
+
 
 class Wallet:
     def __init__(self, generate_keys=True):
         if generate_keys:
             self.private_key = rsa.generate_private_key(
                 public_exponent=65537,
-                key_size=2048
+                key_size=512
             )
             self.public_key = self.private_key.public_key()
         else:
@@ -89,8 +112,8 @@ class Wallet:
     @classmethod
     def from_ascii_keys(cls, private_key, public_key):
         wallet = cls(False)
-        wallet.private_key = Wallet.serialize_ascii_private_key(private_key)
-        wallet.public_key = Wallet.serialize_ascii_public_key(public_key)
+        wallet.private_key = ascii_key_to_private_key(private_key)
+        wallet.public_key = ascii_key_to_public_key(public_key)
         return wallet
 
     @classmethod
@@ -100,16 +123,6 @@ class Wallet:
         wallet.public_key = serialization.load_der_public_key(public_key)
         return wallet
 
-    # Function loads an ascii key to form a cryptography.hazmat RSA public key
-    @staticmethod
-    def serialize_ascii_public_key(ascii_key):
-        return serialization.load_der_public_key(binascii.unhexlify(ascii_key))
-
-    # Function loads an ascii key to form a cryptography.hazmat RSA private key
-    @staticmethod
-    def serialize_ascii_private_key(ascii_key, password=None):
-        return serialization.load_der_private_key(binascii.unhexlify(ascii_key), password)
-
     # Function returns both (private key, public key) pair in bytes
     def keys_to_bytes(self):
         return (self.private_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption()),
@@ -117,5 +130,18 @@ class Wallet:
 
     # Function returns both (private key,public key) pair in an ascii encoding
     def keys_to_ascii(self):
-        return tuple(binascii.hexlify(key).decode("ascii") for key in self.keys_to_bytes())
+        return tuple(binary_to_ascii(key) for key in self.keys_to_bytes())
 
+
+# Function returns a ascii key
+def binary_to_ascii(binary_item):
+    return binascii.hexlify(binary_item).decode("ascii")
+
+
+def ascii_key_to_public_key(ascii_key):
+    return serialization.load_der_public_key(binascii.unhexlify(ascii_key))
+
+
+# Function loads an ascii key to form a cryptography.hazmat RSA private key
+def ascii_key_to_private_key(ascii_key, password=None):
+    return serialization.load_der_private_key(binascii.unhexlify(ascii_key), password)
