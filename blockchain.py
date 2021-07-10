@@ -151,6 +151,10 @@ def binary_to_ascii(binary_item):
     return binascii.hexlify(binary_item).decode("ascii")
 
 
+def ascii_to_binary(ascii_item):
+    return binascii.unhexlify(ascii_item)
+
+
 def ascii_key_to_public_key(ascii_key):
     return serialization.load_der_public_key(binascii.unhexlify(ascii_key))
 

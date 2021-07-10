@@ -1,19 +1,18 @@
-import flask
 from flask import Flask, jsonify, request, render_template
 from blockchain import Wallet, Transaction, BlockChain
 import blockchain as crypto
-import json
 
-app = Flask(__name__,
-            static_folder="/web/static")
+app = Flask(__name__)
 blockchain = BlockChain()
+
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
 # Endpoint creates a new wallet by providing returning a new public/private RSA key pair
-@app.route("/api/wallet/new", methods=["GET"])
+@app.route("/api/wallet", methods=["GET"])
 def create_new_wallet():
     wallet = crypto.Wallet()
     private_key, public_key = wallet.keys_to_ascii()
@@ -24,9 +23,9 @@ def create_new_wallet():
     return jsonify(response), 200
 
 
-# Generates a new transaction
-@app.route("/api/transaction/new", methods=["POST"])
-def generate_transaction():
+# Allows for signing a transaction
+@app.route("/api/transaction/sign", methods=["POST"])
+def sign_transaction():
     json_req = request.json
     if json_req is None:
         return "Missing JSON POST request data", 400
@@ -45,10 +44,28 @@ def generate_transaction():
         "signature": crypto.binary_to_ascii(transaction.signature)
     }
     # Important to not store the private key of the sender to the blockchain
-    transaction.sender_private_key = None
-    blockchain.add_transaction(transaction)
 
     return jsonify(response), 200
+
+
+# Generates a new transaction and stores it on this node
+@app.route("/api/transaction", methods=["POST"])
+def generate_transaction():
+    json_req = request.json
+    if json_req is None:
+        return "Missing JSON POST request data", 400
+
+    json_trans = json_req["transaction"]
+    signature = json_req["signature"]
+
+    transaction = Transaction(json_trans["sender_public_key"], None,
+                              json_trans["recipient_public_key"], json_trans["amount"])
+    transaction.signature = crypto.ascii_to_binary(signature)
+
+    if not transaction.is_valid():
+        return "Transaction is not valid", 400
+
+    blockchain.transactions.append(transaction)
 
 
 @app.route("/api/transactions", methods=["GET"])
