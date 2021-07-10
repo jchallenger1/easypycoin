@@ -24,6 +24,7 @@ class Transaction:
         self.amount = amount
         self.timestamp = datetime.now()
         self.uuid = uuid.uuid4()
+        self.signature = ""
 
     # Function returns a dictionary of this transaction, without the private key
     def to_binary_dict(self) -> dict:
@@ -48,7 +49,7 @@ class Transaction:
 
     # Function creates a signature of this transaction, signed by the private key of the sender
     def sign(self) -> bytes:
-        return self.sender_private_key.sign(
+        self.signature = self.sender_private_key.sign(
             str(self).encode("ascii"),
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
@@ -58,7 +59,15 @@ class Transaction:
         )
 
     def is_valid(self) -> bool:
-        return True
+        return self.sender_public_key.verify(
+            self.signature,
+            str(self).encode("ascii"),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
 
 
 class Block:
@@ -76,37 +85,41 @@ class Block:
         return hash_creator.digest()
 
     def is_valid(self) -> bool:
-        is_all_valid = True
-        for transaction in self.transactions:
-            if transaction.is_valid():
-                is_all_valid = False
-        return is_all_valid
+        return all(transaction.is_valid() for transaction in self.transactions)
+
 
 class BlockChain:
     def __init__(self):
         self.transactions = []
-        self.chain = []
+        self.chain = [Block([], 0)]
         self.nodes = set()
         self.node_uuid = uuid.uuid4()
 
+    max_transactions_const = 3
+
     def create_block(self):
-        pass
+        if len(self.transactions) < 1:
+            print("Not enough transactions to make a block")
+            return None
 
-    def add_transaction(self, transaction, transaction_signature):
+        transactions = self.transactions[:BlockChain.max_transactions_const]
+        prev_block_hash = self.chain[-1].hash()
+        return Block(transactions, prev_block_hash)
 
+    def add_transaction(self, transaction):
+        self.transactions.append(transaction)
         pass
 
 
 class Wallet:
     def __init__(self, generate_keys=True):
+        self.private_key = self.public_key = None
         if generate_keys:
             self.private_key = rsa.generate_private_key(
                 public_exponent=65537,
                 key_size=512
             )
             self.public_key = self.private_key.public_key()
-        else:
-            self.private_key = self.public_key = None
 
     # Function creates a new Wallet object with private/public keys given in an ascii format
     @classmethod
