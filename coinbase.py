@@ -1,12 +1,16 @@
-from flask import Flask, jsonify, request
+import flask
+from flask import Flask, jsonify, request, render_template
 from blockchain import Wallet, Transaction, BlockChain
 import blockchain as crypto
 import json
 
-app = Flask(__name__)
-
+app = Flask(__name__,
+            static_folder="/web/static")
 blockchain = BlockChain()
 
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 # Endpoint creates a new wallet by providing returning a new public/private RSA key pair
 @app.route("/api/wallet/new", methods=["GET"])
@@ -58,4 +62,4 @@ def get_chain():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
