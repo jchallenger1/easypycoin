@@ -2,11 +2,56 @@
 <html lang="en">
 
 <head>
-    <title> easypycoin</title>
+    <title>Easypycoin</title>
+
+    <!-- No favicon.ico requests -->
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-umd-min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link href="{{ url_for('static', filename='stylesheet.css') }}" rel="stylesheet">
+
 </head>
 
 <body>
 
+<ul class="nav nav-tabs">
+  <li class="active"><a data-toggle="tab" href="#home">Home</a></li>
+  <li><a data-toggle="tab" href="#menu1">Menu 1</a></li>
+  <li><a data-toggle="tab" href="#menu2">Menu 2</a></li>
+</ul>
+
+<div class="tab-content">
+  <div id="home" class="tab-pane fade in active">
+    <h3>HOME</h3>
+    <p>Some content.</p>
+  </div>
+  <div id="menu1" class="tab-pane fade">
+    <h3>Menu 1</h3>
+    <p>Some content in menu 1.</p>
+  </div>
+  <div id="menu2" class="tab-pane fade">
+    <h3>Menu 2</h3>
+    <p>Some content in menu 2.</p>
+  </div>
+</div>
+
+
+    <!--
+    <div class="gen-keys">
+        <form>
+            <label for="pklbl">Public Key</label> <br><br>
+            <input type="text" id="pkey"> <br><br>
+            <label for="sklbl">Private Key</label> <br><br>
+            <input type="text" id="skey"> <br><br>
+            <input type="button" id="genkeysbtn" onclick="genKeys()"> Generate Keys
+        </form>
+    </div>
+    -->
 </body>
 </html>
