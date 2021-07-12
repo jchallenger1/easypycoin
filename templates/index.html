@@ -11,47 +11,62 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-umd-min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <!-- JavaScript Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
 
     <!-- CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link href="{{ url_for('static', filename='stylesheet.css') }}" rel="stylesheet">
 
 </head>
 
 <body>
 
-<ul class="nav nav-tabs">
-  <li class="active"><a data-toggle="tab" href="#home">Home</a></li>
-  <li><a data-toggle="tab" href="#menu1">Menu 1</a></li>
-  <li><a data-toggle="tab" href="#menu2">Menu 2</a></li>
-</ul>
 
-<div class="tab-content">
-  <div id="home" class="tab-pane fade in active">
-    <h3>HOME</h3>
-    <p>Some content.</p>
-  </div>
-  <div id="menu1" class="tab-pane fade">
-    <h3>Menu 1</h3>
-    <p>Some content in menu 1.</p>
-  </div>
-  <div id="menu2" class="tab-pane fade">
-    <h3>Menu 2</h3>
-    <p>Some content in menu 2.</p>
-  </div>
+<nav>
+    <div class="nav nav-pills" id="nav-tab" role="tablist">
+        <a class="flex-md-fill text-sm-center">EasyPyCoin</a>
+        <a class="flex-sm-fill text-sm-center nav-link active" id="nav-home-tab" data-bs-toggle="tab"
+           data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home" aria-selected="true">Home</a>
+        <a class="flex-sm-fill text-sm-center nav-link" id="nav-profile-tab" data-bs-toggle="tab"
+           data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="false">Profile</a>
+        <a class="flex-sm-fill text-sm-center nav-link" id="nav-contact-tab" data-bs-toggle="tab"
+           data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Contact</a>
+    </div>
+</nav>
+<div class="tab-content" id="nav-tabContent">
+    <div class="tab-pane fade show active" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab">Text1</div>
+    <div class="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab">Text2</div>
+    <div class="tab-pane fade" id="nav-contact" role="tabpanel" aria-labelledby="nav-contact-tab">Text3</div>
 </div>
 
 
-    <!--
-    <div class="gen-keys">
-        <form>
-            <label for="pklbl">Public Key</label> <br><br>
-            <input type="text" id="pkey"> <br><br>
-            <label for="sklbl">Private Key</label> <br><br>
-            <input type="text" id="skey"> <br><br>
-            <input type="button" id="genkeysbtn" onclick="genKeys()"> Generate Keys
-        </form>
-    </div>
-    -->
+<!--
+<div class="container">
+    <ul class="nav nav-tabs nav-fill">
+        <li class="nav-item">
+            <a class="nav-link active" data-toggle="tab">Generate Wallet</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-toggle="tab">Make Transaction</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-toggle="tab">View Transactions</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-toggle="tab">Mine Blocks</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-toggle="tab">Blockchain Nodes</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" data-toggle="tab">Statistics</a>
+        </li>
+    </ul>
+</div>
+-->
 </body>
 </html>

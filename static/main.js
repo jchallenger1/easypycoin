@@ -6,3 +6,12 @@ function genKeys() {
         console.log(data);
     });
 }
+
+$(document).ready(function() {
+    $(".nav li a").on("click", () => {
+        console.log("clicked!")
+        $(".nav li a").removeClass("active");
+        $(this).addClass("active");
+    });
+});
+
