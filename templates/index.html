@@ -25,48 +25,51 @@
 
 <body>
 
-
-<nav>
-    <div class="nav nav-pills" id="nav-tab" role="tablist">
-        <a class="flex-md-fill text-sm-center">EasyPyCoin</a>
-        <a class="flex-sm-fill text-sm-center nav-link active" id="nav-home-tab" data-bs-toggle="tab"
-           data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home" aria-selected="true">Home</a>
-        <a class="flex-sm-fill text-sm-center nav-link" id="nav-profile-tab" data-bs-toggle="tab"
-           data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="false">Profile</a>
-        <a class="flex-sm-fill text-sm-center nav-link" id="nav-contact-tab" data-bs-toggle="tab"
-           data-bs-target="#nav-contact" type="button" role="tab" aria-controls="nav-contact" aria-selected="false">Contact</a>
+<div class="container-fluid">
+    <nav>
+        <div class="nav nav-pills" id="nav-tab" role="tablist">
+            <a class="flex-md-fill text-sm-center">EasyPyCoin</a>
+            <a class="flex-sm-fill text-sm-center nav-link active" id="gen-wallet-tab" data-bs-toggle="tab"
+               data-bs-target="#gen-wallet" type="button" role="tab" aria-controls="gen-wallet" aria-selected="true">Generate
+                Wallet</a>
+            <a class="flex-sm-fill text-sm-center nav-link" id="mk-trans-tab" data-bs-toggle="tab"
+               data-bs-target="#mk-trans" type="button" role="tab" aria-controls="mk-trans" aria-selected="false">Make
+                Transaction</a>
+            <a class="flex-sm-fill text-sm-center nav-link" id="view-trans-tab" data-bs-toggle="tab"
+               data-bs-target="#view-trans" type="button" role="tab" aria-controls="view-trans" aria-selected="false">View
+                Transactions</a>
+            <a class="flex-sm-fill text-sm-center nav-link" id="mine-blocks-tab" data-bs-toggle="tab"
+               data-bs-target="#mine-blocks" type="button" role="tab" aria-controls="mine-blocks" aria-selected="false">Mine
+                Blocks</a>
+            <a class="flex-sm-fill text-sm-center nav-link" id="chain-nodes-tab" data-bs-toggle="tab"
+               data-bs-target="#chain-nodes" type="button" role="tab" aria-controls="chain-nodes" aria-selected="false">Blockchain
+                Nodes</a>
+            <a class="flex-sm-fill text-sm-center nav-link" id="stats-tab" data-bs-toggle="tab"
+               data-bs-target="#stats" type="button" role="tab" aria-controls="stats"
+               aria-selected="false">Statistics</a>
+        </div>
+    </nav>
+    <div class="tab-content" id="nav-tabContent">
+        <div class="tab-pane fade show active" id="gen-wallet" role="tabpanel" aria-labelledby="gen-wallet-tab">
+            Text1
+        </div>
+        <div class="tab-pane fade" id="mk-trans" role="tabpanel" aria-labelledby="mk-trans-tab">
+            Text2
+        </div>
+        <div class="tab-pane fade" id="view-trans" role="tabpanel" aria-labelledby="view-trans-tab">
+            Text3
+        </div>
+        <div class="tab-pane fade show" id="mine-blocks" role="tabpanel" aria-labelledby="mine-blocks-tab">
+            Text4
+        </div>
+        <div class="tab-pane fade" id="chain-nodes" role="tabpanel" aria-labelledby="chain-nodes-tab">
+            Text5
+        </div>
+        <div class="tab-pane fade" id="stats" role="tabpanel" aria-labelledby="stats-tab">
+            Text6
+        </div>
     </div>
-</nav>
-<div class="tab-content" id="nav-tabContent">
-    <div class="tab-pane fade show active" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab">Text1</div>
-    <div class="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab">Text2</div>
-    <div class="tab-pane fade" id="nav-contact" role="tabpanel" aria-labelledby="nav-contact-tab">Text3</div>
 </div>
 
-
-<!--
-<div class="container">
-    <ul class="nav nav-tabs nav-fill">
-        <li class="nav-item">
-            <a class="nav-link active" data-toggle="tab">Generate Wallet</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#" data-toggle="tab">Make Transaction</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#" data-toggle="tab">View Transactions</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#" data-toggle="tab">Mine Blocks</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#" data-toggle="tab">Blockchain Nodes</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" href="#" data-toggle="tab">Statistics</a>
-        </li>
-    </ul>
-</div>
--->
 </body>
 </html>
