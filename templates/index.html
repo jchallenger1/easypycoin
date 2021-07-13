@@ -29,34 +29,40 @@
     <nav>
         <div class="nav nav-pills" id="nav-tab" role="tablist">
             <a class="flex-md-fill text-sm-center">EasyPyCoin</a>
+
             <a class="flex-sm-fill text-sm-center nav-link active" id="gen-wallet-tab" data-bs-toggle="tab"
-               data-bs-target="#gen-wallet" type="button" role="tab" aria-controls="gen-wallet" aria-selected="true">Generate
-                Wallet</a>
+               data-bs-target="#gen-wallet" type="button" role="tab" aria-controls="gen-wallet" aria-selected="true">
+                Generate Wallet</a>
+
             <a class="flex-sm-fill text-sm-center nav-link" id="mk-trans-tab" data-bs-toggle="tab"
-               data-bs-target="#mk-trans" type="button" role="tab" aria-controls="mk-trans" aria-selected="false">Make
-                Transaction</a>
+               data-bs-target="#mk-trans" type="button" role="tab" aria-controls="mk-trans" aria-selected="false">
+                Make Transaction</a>
+
             <a class="flex-sm-fill text-sm-center nav-link" id="view-trans-tab" data-bs-toggle="tab"
-               data-bs-target="#view-trans" type="button" role="tab" aria-controls="view-trans" aria-selected="false">View
-                Transactions</a>
-            <a class="flex-sm-fill text-sm-center nav-link" id="mine-blocks-tab" data-bs-toggle="tab"
-               data-bs-target="#mine-blocks" type="button" role="tab" aria-controls="mine-blocks" aria-selected="false">Mine
-                Blocks</a>
+               data-bs-target="#view-trans" type="button" role="tab" aria-controls="view-trans" aria-selected="false">
+                View and Mine Transactions</a>
+
+            <a class="flex-sm-fill text-sm-center nav-link" id="chain-tab" data-bs-toggle="tab"
+               data-bs-target="#chain" type="button" role="tab" aria-controls="chain" aria-selected="false">
+                Blockchain</a>
+
             <a class="flex-sm-fill text-sm-center nav-link" id="chain-nodes-tab" data-bs-toggle="tab"
-               data-bs-target="#chain-nodes" type="button" role="tab" aria-controls="chain-nodes" aria-selected="false">Blockchain
-                Nodes</a>
+               data-bs-target="#chain-nodes" type="button" role="tab" aria-controls="chain-nodes" aria-selected="false">
+                Blockchain Nodes</a>
+
             <a class="flex-sm-fill text-sm-center nav-link" id="stats-tab" data-bs-toggle="tab"
-               data-bs-target="#stats" type="button" role="tab" aria-controls="stats"
-               aria-selected="false">Statistics</a>
+               data-bs-target="#stats" type="button" role="tab" aria-controls="stats"  aria-selected="false">
+                Statistics</a>
+
         </div>
     </nav>
     <div class="tab-content" id="nav-tabContent">
+        <!-- Wallet Generator Tab -->
         <div class="tab-pane fade show active" id="gen-wallet" role="tabpanel" aria-labelledby="gen-wallet-tab">
-            <div class="text-center">
-                <h2>Wallet Generator</h2>
-            </div>
+            <h2>Wallet Generator</h2>
             <div class="form-group row p-3">
-                <label for="private-key-form" class="col-sm-2 col-form-label">Private Key:</label>
-                <textarea class="form-control col-sm-6" id="private-key-form"></textarea>
+                <label for="private-key-form-walgen" class="col-sm-2 col-form-label">Private Key:</label>
+                <textarea class="form-control col-sm-6" id="private-key-form-walgen"></textarea>
             </div>
             <div class="form-group row p-3">
                 <label for="public-key-form" class="col-sm-2 col-form-label">Public Key:</label>
@@ -66,21 +72,58 @@
                 <button type="button" class="btn btn-outline-primary btn-large">Generate Wallet</button>
             </div>
         </div>
+
+        <!-- Make Transactions Tab -->
         <div class="tab-pane fade" id="mk-trans" role="tabpanel" aria-labelledby="mk-trans-tab">
-            Text2
+            <div class="text-center">
+                <h2 class="text-center">Make Transactions</h2>
+                <div class="form-group row p-3">
+                    <label for="private-key-form-mktrans" class="col-sm-2 col-form-label">Sender's Private Key:</label>
+                    <textarea class="form-control col-sm-6" id="private-key-form-mktrans"></textarea>
+                </div>
+                <div class="form-group row p-3">
+                    <label for="public-key-mktrans" class="col-sm-2 col-form-label">Sender's Public Key:</label>
+                    <textarea class="form-control col-sm-6" id="public-key-mktrans"></textarea>
+                </div>
+                <div class="form-group row p-3">
+                    <label for="recipient-address-mktrans" class="col-sm-2 col-form-label">Recipient's Public Key:</label>
+                    <textarea class="form-control col-sm-6" id="recipient-address-mktrans"></textarea>
+                </div>
+                <div class="form-group row p-3">
+                    <label for="amount-mktrans" class="col-sm-2 col-form-label">Amount:</label>
+                    <input type="text" id="amount-mktrans" placeholder="0">
+                </div>
+                <div class="form-group row p-3">
+                    <label for="signature-mktrans" class="col-sm-2 col-form-label">Transaction Signature:</label>
+                    <textarea class="form-control col-sm-6" id="signature-mktrans"></textarea>
+                </div>
+                <div class="d-md-flex flex-row justify-content-around col-10">
+                    <button type="button" class="btn btn-outline-primary btn-large">Sign Transaction</button>
+                    <button type="button" class="btn btn-outline-primary btn-large">Broadcast Transaction</button>
+                </div>
+            </div>
         </div>
+
+        <!-- View and Mine Transactions Tab -->
         <div class="tab-pane fade" id="view-trans" role="tabpanel" aria-labelledby="view-trans-tab">
             Text3
         </div>
-        <div class="tab-pane fade show" id="mine-blocks" role="tabpanel" aria-labelledby="mine-blocks-tab">
+
+        <!-- Blockchain Tab -->
+        <div class="tab-pane fade show" id="chain" role="tabpanel" aria-labelledby="chain-tab">
             Text4
         </div>
+
+        <!-- Blockchain Nodes Tab -->
         <div class="tab-pane fade" id="chain-nodes" role="tabpanel" aria-labelledby="chain-nodes-tab">
             Text5
         </div>
+
+        <!-- Statistics Tab -->
         <div class="tab-pane fade" id="stats" role="tabpanel" aria-labelledby="stats-tab">
             Text6
         </div>
+
     </div>
 </div>
 
