@@ -11,47 +11,162 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-umd-min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <!-- JavaScript Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
 
     <!-- CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link href="{{ url_for('static', filename='stylesheet.css') }}" rel="stylesheet">
 
 </head>
 
 <body>
 
-<ul class="nav nav-tabs">
-  <li class="active"><a data-toggle="tab" href="#home">Home</a></li>
-  <li><a data-toggle="tab" href="#menu1">Menu 1</a></li>
-  <li><a data-toggle="tab" href="#menu2">Menu 2</a></li>
-</ul>
+<div class="container-fluid">
+    <nav>
+        <div class="nav nav-pills" id="nav-tab" role="tablist">
+            <a class="flex-md-fill text-sm-center">EasyPyCoin</a>
 
-<div class="tab-content">
-  <div id="home" class="tab-pane fade in active">
-    <h3>HOME</h3>
-    <p>Some content.</p>
-  </div>
-  <div id="menu1" class="tab-pane fade">
-    <h3>Menu 1</h3>
-    <p>Some content in menu 1.</p>
-  </div>
-  <div id="menu2" class="tab-pane fade">
-    <h3>Menu 2</h3>
-    <p>Some content in menu 2.</p>
-  </div>
+            <a class="flex-sm-fill text-sm-center nav-link active" id="gen-wallet-tab" data-bs-toggle="tab"
+               data-bs-target="#gen-wallet" type="button" role="tab" aria-controls="gen-wallet" aria-selected="true">
+                Generate Wallet</a>
+
+            <a class="flex-sm-fill text-sm-center nav-link" id="mk-trans-tab" data-bs-toggle="tab"
+               data-bs-target="#mk-trans" type="button" role="tab" aria-controls="mk-trans" aria-selected="false">
+                Make Transaction</a>
+
+            <a class="flex-sm-fill text-sm-center nav-link" id="view-trans-tab" data-bs-toggle="tab"
+               data-bs-target="#view-trans" type="button" role="tab" aria-controls="view-trans" aria-selected="false">
+                View and Mine Transactions</a>
+
+            <a class="flex-sm-fill text-sm-center nav-link" id="chain-tab" data-bs-toggle="tab"
+               data-bs-target="#chain" type="button" role="tab" aria-controls="chain" aria-selected="false">
+                Blockchain</a>
+
+            <a class="flex-sm-fill text-sm-center nav-link" id="chain-nodes-tab" data-bs-toggle="tab"
+               data-bs-target="#chain-nodes" type="button" role="tab" aria-controls="chain-nodes" aria-selected="false">
+                Blockchain Nodes</a>
+
+            <a class="flex-sm-fill text-sm-center nav-link" id="stats-tab" data-bs-toggle="tab"
+               data-bs-target="#stats" type="button" role="tab" aria-controls="stats"  aria-selected="false">
+                Statistics</a>
+
+        </div>
+    </nav>
+    <div class="tab-content" id="nav-tabContent">
+        <!-- Wallet Generator Tab -->
+        <div class="tab-pane fade show active" id="gen-wallet" role="tabpanel" aria-labelledby="gen-wallet-tab">
+            <h2>Wallet Generator</h2>
+            <div class="form-group row p-3">
+                <label for="private-key-form-walgen" class="col-sm-2 col-form-label">Private Key:</label>
+                <textarea class="form-control col-sm-6" id="private-key-form-walgen"></textarea>
+            </div>
+            <div class="form-group row p-3">
+                <label for="public-key-form" class="col-sm-2 col-form-label">Public Key:</label>
+                <textarea class="form-control col-sm-6" id="public-key-form"></textarea>
+            </div>
+            <div class="text-center">
+                <button type="button" class="btn btn-outline-primary btn-large">Generate Wallet</button>
+            </div>
+        </div>
+
+        <!-- Make Transactions Tab -->
+        <div class="tab-pane fade" id="mk-trans" role="tabpanel" aria-labelledby="mk-trans-tab">
+            <div class="text-center">
+                <h2 class="text-center">Make Transactions</h2>
+                <div class="form-group row p-3">
+                    <label for="private-key-form-mktrans" class="col-sm-2 col-form-label">Sender's Private Key:</label>
+                    <textarea class="form-control col-sm-6" id="private-key-form-mktrans"></textarea>
+                </div>
+                <div class="form-group row p-3">
+                    <label for="public-key-mktrans" class="col-sm-2 col-form-label">Sender's Public Key:</label>
+                    <textarea class="form-control col-sm-6" id="public-key-mktrans"></textarea>
+                </div>
+                <div class="form-group row p-3">
+                    <label for="recipient-address-mktrans" class="col-sm-2 col-form-label">Recipient's Public Key:</label>
+                    <textarea class="form-control col-sm-6" id="recipient-address-mktrans"></textarea>
+                </div>
+                <div class="form-group row p-3">
+                    <label for="amount-mktrans" class="col-sm-2 col-form-label">Amount:</label>
+                    <input type="text" id="amount-mktrans" placeholder="0">
+                </div>
+                <div class="form-group row p-3">
+                    <label for="signature-mktrans" class="col-sm-2 col-form-label">Transaction Signature:</label>
+                    <textarea class="form-control col-sm-6" id="signature-mktrans"></textarea>
+                </div>
+                <div class="d-md-flex flex-row justify-content-around col-10">
+                    <button type="button" class="btn btn-outline-primary btn-large">Sign Transaction</button>
+                    <button type="button" class="btn btn-outline-primary btn-large">Broadcast Transaction</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- View and Mine Transactions Tab -->
+        <div class="tab-pane fade" id="view-trans" role="tabpanel" aria-labelledby="view-trans-tab">
+            <h2 class="text-center">View and Mine Transactions</h2>
+            <div>
+                <button type="button" class="btn btn-outline-primary btn-large">Refresh Transactions</button>
+                <p class="small">Refresh is done every 10 seconds</p>
+            </div>
+            <div class="container-fluid table-responsive">
+                <table class="table table-striped table-primary">
+                    <thead>
+                        <tr>
+                            <th scope="col">UUID</th>
+                            <th scope="col">Timestamp</th>
+                            <th scope="col">Sender Public Key</th>
+                            <th scope="col">Recipient Public Key</th>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="view-trans-table">
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Blockchain Tab -->
+        <div class="tab-pane fade show" id="chain" role="tabpanel" aria-labelledby="chain-tab">
+            <h2 class="text-center">View Blocks from Blockchain</h2>
+            <div>
+                <button type="button" class="btn btn-outline-primary btn-large">Refresh Transactions</button>
+                <p class="small">Refresh is done every 10 seconds</p>
+            </div>
+            <div class="container-fluid table-responsive">
+                <table class="table table-striped table-primary">
+                    <thead>
+                        <tr>
+                            <th scope="col">Index</th>
+                            <th scope="col">SHA256 Hash</th>
+                            <th scope="col">Previous SHA256 Hash</th>
+                            <th scope="col">Transactions</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blockchain-table">
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Blockchain Nodes Tab -->
+        <div class="tab-pane fade" id="chain-nodes" role="tabpanel" aria-labelledby="chain-nodes-tab">
+            Text5
+        </div>
+
+        <!-- Statistics Tab -->
+        <div class="tab-pane fade" id="stats" role="tabpanel" aria-labelledby="stats-tab">
+            Text6
+        </div>
+
+    </div>
 </div>
 
-
-    <!--
-    <div class="gen-keys">
-        <form>
-            <label for="pklbl">Public Key</label> <br><br>
-            <input type="text" id="pkey"> <br><br>
-            <label for="sklbl">Private Key</label> <br><br>
-            <input type="text" id="skey"> <br><br>
-            <input type="button" id="genkeysbtn" onclick="genKeys()"> Generate Keys
-        </form>
-    </div>
-    -->
 </body>
 </html>
