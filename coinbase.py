@@ -20,7 +20,7 @@ def create_new_wallet():
         "private_key": private_key,
         "public_key": public_key
     }
-    return jsonify(response), 200
+    return response
 
 
 # Allows for signing a transaction

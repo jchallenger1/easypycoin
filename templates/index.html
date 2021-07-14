@@ -62,14 +62,21 @@
             <h2>Wallet Generator</h2>
             <div class="form-group row p-3">
                 <label for="private-key-form-walgen" class="col-sm-2 col-form-label">Private Key:</label>
-                <textarea class="form-control col-sm-6" id="private-key-form-walgen"></textarea>
+                <textarea readonly class="form-control col-sm-6" id="private-key-form-walgen"></textarea>
             </div>
             <div class="form-group row p-3">
-                <label for="public-key-form" class="col-sm-2 col-form-label">Public Key:</label>
-                <textarea class="form-control col-sm-6" id="public-key-form"></textarea>
+                <label for="public-key-form-walgen" class="col-sm-2 col-form-label">Public Key:</label>
+                <textarea readonly class="form-control col-sm-6" id="public-key-form-walgen"></textarea>
             </div>
             <div class="text-center">
-                <button type="button" class="btn btn-outline-primary btn-large">Generate Wallet</button>
+                <button type="button" class="btn btn-outline-primary btn-large" id="gen-wallet-btn">Generate Wallet</button>
+            </div>
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                Keep your private key secret! Your private key is the method to know you are the owner of your
+                address/public key
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
         </div>
 
