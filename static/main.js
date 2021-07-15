@@ -1,6 +1,5 @@
 const hostname = "http://127.0.0.1:5000"
 
-
 function createHTMLAlertMessage(message, messageType="danger") {
     let htmlMessage = document.createElement("div");
     htmlMessage.classList.add("alert", `alert-${messageType}`, "alert-dismissible", "fade", "show");
@@ -30,21 +29,27 @@ function generateCryptoKeys() {
     });
 }
 
-function signTransaction() {
+function getTransactionDataFieldsToJson() {
     let sender_private_key = $("#private-key-form-mktrans").val();
     let sender_public_key = $("#public-key-mktrans").val();
     let recipient_public_key = $("#recipient-address-mktrans").val();
     let amount = $("#amount-mktrans").val();
+    let signature = $("#signature-mktrans").val();
     let request = {
         sender_private_key,
         sender_public_key,
         recipient_public_key,
-        amount
-    }
+        amount,
+        signature
+    };
+    return JSON.stringify(request);
+}
+
+function signTransaction() {
     $.ajax({
         url:`${hostname}/api/transaction/sign`,
         type:"POST",
-        data:JSON.stringify(request),
+        data:getTransactionDataFieldsToJson(),
         contentType:"application/json; charset=utf-8",
         dataType:"json",
         success: function (data) {
@@ -61,7 +66,25 @@ function signTransaction() {
 }
 
 function broadcastTransaction() {
-
+    $.ajax({
+        url:`${hostname}/api/transaction`,
+        type:"POST",
+        data:getTransactionDataFieldsToJson(),
+        contentType:"application/json; charset=utf-8",
+        dataType:"json",
+        success: function (data) {
+            $("#messages").append(createHTMLAlertMessage("Your transaction was successfully broadcast to nodes",
+                "success"));
+            $("#signature-mktrans").val("");
+        },
+        error: function(data) {
+            let errorMessage = `An error has occurred attempting to broadcast this transaction<br>
+                            The server returned status ${data["statusText"]}(${data["status"]}),<br>
+                            with message: "${data["responseText"]}"
+                            `
+            $("#messages").append(createHTMLAlertMessage(errorMessage));
+        }
+    });
 }
 
 $(document).ready(function() {

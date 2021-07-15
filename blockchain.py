@@ -1,6 +1,8 @@
 import binascii
 import uuid
 from datetime import datetime
+
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat, NoEncryption
@@ -28,27 +30,31 @@ class Transaction:
 
     # Function returns a dictionary of this transaction, without the private key
     def to_binary_dict(self) -> dict:
-        return {"sender_public_key": self.sender_public_key,
-                "recipient_public_key": self.recipient_public_key,
-                "amount": self.amount,
-                "timestamp": self.timestamp,
-                "uuid": self.uuid}
+        return {
+            "sender_public_key": self.sender_public_key,
+            "recipient_public_key": self.recipient_public_key,
+            "amount": self.amount,
+            # "timestamp": self.timestamp,
+            # "uuid": self.uuid
+        }
 
     def to_ascii_dict(self) -> dict:
-        return {"sender_public_key": binary_to_ascii(
-                    self.sender_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
-                "recipient_public_key": binary_to_ascii(
-                    self.recipient_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
-                "amount": self.amount,
-                "timestamp": self.timestamp,
-                "uuid": self.uuid}
+        return {
+            "sender_public_key": binary_to_ascii(
+                self.sender_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
+            "recipient_public_key": binary_to_ascii(
+                self.recipient_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
+            "amount": self.amount,
+            # "timestamp": self.timestamp,
+            # "uuid": self.uuid
+        }
 
     # Function converts this object to a string, without the private key
     def __str__(self) -> str:
         return str(self.to_ascii_dict())
 
     # Function creates a signature of this transaction, signed by the private key of the sender
-    def sign(self) -> bytes:
+    def sign(self):
         self.signature = self.sender_private_key.sign(
             str(self).encode("ascii"),
             padding.PSS(
@@ -59,15 +65,19 @@ class Transaction:
         )
 
     def is_valid(self) -> bool:
-        return self.sender_public_key.verify(
-            self.signature,
-            str(self).encode("ascii"),
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
+        try:
+            self.sender_public_key.verify(
+                self.signature,
+                str(self).encode("ascii"),
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+            return True
+        except InvalidSignature:
+            return False
 
 
 class Block:
