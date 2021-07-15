@@ -28,6 +28,7 @@ def create_new_wallet():
 def sign_transaction():
     json_req = request.json
     if json_req is None:
+        print("bad req")
         return "Missing JSON POST request data", 400
 
     sender_public_key = json_req["sender_public_key"]
