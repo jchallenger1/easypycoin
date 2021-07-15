@@ -1,11 +1,11 @@
 const hostname = "http://127.0.0.1:5000"
 
 
-function createHTMLAlertMessage(message) {
+function createHTMLAlertMessage(message, messageType="danger") {
     let htmlMessage = document.createElement("div");
-    htmlMessage.classList.add("alert", "alert-warning", "alert-dismissible", "fade", "show");
+    htmlMessage.classList.add("alert", `alert-${messageType}`, "alert-dismissible", "fade", "show");
     htmlMessage.setAttribute("role", "alert");
-    htmlMessage.textContent = message;
+    htmlMessage.innerHTML = message;
 
     let htmlButton = document.createElement("button");
     htmlButton.classList.add("close");
@@ -41,14 +41,23 @@ function signTransaction() {
         recipient_public_key,
         amount
     }
-
-    $.post(`${hostname}/api/transaction/sign`, request, (data) => {
-        console.log(data);
-    }).fail((data) => {
-        $("#messages-trans").append(createHTMLAlertMessage("bad req"));
-        console.log(data);
-    });
-
+    $.ajax({
+        url:`${hostname}/api/transaction/sign`,
+        type:"POST",
+        data:JSON.stringify(request),
+        contentType:"application/json; charset=utf-8",
+        dataType:"json",
+        success: function (data) {
+            $("#signature-mktrans").val(data["signature"]);
+        },
+        error: function(data) {
+            let errorMessage = `An error has occurred attempting to sign this transaction<br>
+                            The server returned status ${data["statusText"]}(${data["status"]}),<br>
+                            with message: "${data["responseText"]}"
+                            `
+            $("#messages").append(createHTMLAlertMessage(errorMessage));
+        }
+    })
 }
 
 function broadcastTransaction() {
@@ -62,8 +71,8 @@ $(document).ready(function() {
         $(this).addClass("active");
     });
 
-    // Allows the fading out of warnings when the close button is clicked
-    $(".alert button").on("click", function() {
+     // Allows the fading out of warnings when the close button is clicked
+    $(document).on("click", ".alert button", function () {
         $(this).parent(".alert").alert("close");
     })
 

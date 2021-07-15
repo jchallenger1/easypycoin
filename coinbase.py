@@ -28,13 +28,22 @@ def create_new_wallet():
 def sign_transaction():
     json_req = request.json
     if json_req is None:
-        print("bad req")
         return "Missing JSON POST request data", 400
 
     sender_public_key = json_req["sender_public_key"]
     sender_private_key = json_req["sender_private_key"]
     recipient_public_key = json_req["recipient_public_key"]
     amount = json_req["amount"]
+
+    try:
+        amount = int(amount)
+    except ValueError:
+        return "amount is not an integer", 400
+    if amount <= 0:
+        return "amount to send cannot be less than 0", 400
+
+    if [None, ""] in [sender_public_key, sender_private_key, recipient_public_key, amount]:
+        return "A field is missing to sign a transaction", 400
 
     wallet = Wallet.from_ascii_keys(sender_private_key, sender_public_key)
     transaction = Transaction(wallet.public_key, wallet.private_key,
@@ -44,7 +53,6 @@ def sign_transaction():
         "transaction": transaction.to_ascii_dict(),
         "signature": crypto.binary_to_ascii(transaction.signature)
     }
-    # Important to not store the private key of the sender to the blockchain
 
     return jsonify(response), 200
 

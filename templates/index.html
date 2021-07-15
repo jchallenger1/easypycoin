@@ -56,6 +56,9 @@
 
         </div>
     </nav>
+    <div class="container mt-4 mb-4" id="messages">
+
+    </div>
     <div class="tab-content" id="nav-tabContent">
         <!-- Wallet Generator Tab -->
         <div class="tab-pane fade show active" id="gen-wallet" role="tabpanel" aria-labelledby="gen-wallet-tab">
@@ -71,7 +74,7 @@
             <div class="text-center">
                 <button type="button" class="btn btn-outline-primary btn-large" id="gen-wallet-btn">Generate Wallet</button>
             </div>
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <div class="alert alert-warning alert-dismissible fade show mt-4" role="alert">
                 Keep your private key secret! Your private key is the method to know you are the owner of your
                 address/public key
                 <button type="button" class="close" data-dismiss="alert" aria-label="Close">
@@ -108,7 +111,6 @@
                     <button type="button" class="btn btn-outline-primary btn-large" id="sign-trans-btn">Sign Transaction</button>
                     <button type="button" class="btn btn-outline-primary btn-large" id="broadcast-trans-btn">Broadcast Transaction</button>
                 </div>
-                <div id="messages-trans"></div>
             </div>
         </div>
 
