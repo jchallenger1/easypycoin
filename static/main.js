@@ -95,7 +95,14 @@ function createHTMLTableStr(transaction, keyObjects) {
     }
     let text = `<tr>`;
     for (const key of keyObjects)
-        text += `<td>${trim(transaction[key])}</td>`;
+        text += `<td data-value="${transaction[key]}" data-key="${key}">${trim(transaction[key])}</td>`;
+    text += `<td><button class="btn btn-primary tr-copy-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+                  <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                  <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                </svg>
+                Copy
+            </button></td>`;
     return text + `</tr>`;
 }
 
@@ -108,6 +115,16 @@ function refreshTransactions() {
     });
 }
 
+
+function textToClipboard (text) {
+    let dummy = document.createElement("textarea");
+    document.body.appendChild(dummy);
+    dummy.value = text;
+    dummy.select();
+    document.execCommand("copy");
+    document.body.removeChild(dummy);
+}
+
 $(document).ready(function() {
     // Allows navigation of the tabs
     $(".nav li a").on("click", () => {
@@ -118,7 +135,25 @@ $(document).ready(function() {
      // Allows the fading out of warnings when the close button is clicked
     $(document).on("click", ".alert button", function () {
         $(this).parent(".alert").alert("close");
-    })
+    });
+
+    $(document).on("click", ".tr-copy-btn", function() {
+        let tr = $(this).parent().parent();
+        let dict = {}
+        tr.children().each(function(index, element) {
+            element.getAttribute("data-key")
+            if (element.hasAttribute("data-key") && element.hasAttribute("data-value"))
+                dict[element.getAttribute("data-key")] = element.getAttribute("data-value");
+        })
+        textToClipboard(JSON.stringify(dict));
+
+        let This = this;
+        let previous = $(this).html();
+        $(this).text("Copied!")
+        setTimeout(function(){
+            $(This).html(previous);
+        }, 1000)
+    });
 
     $("#gen-wallet-btn").on("click", generateCryptoKeys);
 
@@ -127,6 +162,7 @@ $(document).ready(function() {
     $("#broadcast-trans-btn").on("click", broadcastTransaction);
 
     $("#refresh-trans-button").on("click", refreshTransactions);
+
 
 });
 
