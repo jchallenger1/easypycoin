@@ -1,3 +1,5 @@
+import json
+
 from flask import Flask, jsonify, request, render_template
 from blockchain import Wallet, Transaction, BlockChain
 import blockchain as crypto
@@ -20,7 +22,7 @@ def create_new_wallet():
         "private_key": private_key,
         "public_key": public_key
     }
-    return jsonify(response), 200
+    return response
 
 
 # Allows for signing a transaction
@@ -35,15 +37,23 @@ def sign_transaction():
     recipient_public_key = json_req["recipient_public_key"]
     amount = json_req["amount"]
 
+    try:
+        amount = int(amount)
+    except ValueError:
+        return "amount is not an integer", 400
+    if amount <= 0:
+        return "amount to send cannot be less than 0", 400
+
+    if [None, ""] in [sender_public_key, sender_private_key, recipient_public_key, amount]:
+        return "A field is missing to sign a transaction", 400
+
     wallet = Wallet.from_ascii_keys(sender_private_key, sender_public_key)
     transaction = Transaction(wallet.public_key, wallet.private_key,
                               crypto.ascii_key_to_public_key(recipient_public_key), amount)
     transaction.sign()
-    response = {
-        "transaction": transaction.to_ascii_dict(),
-        "signature": crypto.binary_to_ascii(transaction.signature)
-    }
-    # Important to not store the private key of the sender to the blockchain
+
+    response = transaction.to_ascii_dict()
+    response["signature"] = crypto.binary_to_ascii(transaction.signature)
 
     return jsonify(response), 200
 
@@ -55,22 +65,34 @@ def generate_transaction():
     if json_req is None:
         return "Missing JSON POST request data", 400
 
-    json_trans = json_req["transaction"]
+    amount = json_req["amount"]
+    try:
+        amount = int(amount)
+    except ValueError:
+        return "amount is not an integer", 400
+    if amount <= 0:
+        return "amount to send cannot be less than 0", 400
+
+    if [None, ""] in [json_req["signature"], json_req["sender_public_key"], json_req["recipient_public_key"], amount]:
+        return "A field is missing to sign a transaction", 400
+
     signature = json_req["signature"]
 
-    transaction = Transaction(json_trans["sender_public_key"], None,
-                              json_trans["recipient_public_key"], json_trans["amount"])
+    transaction = Transaction(crypto.ascii_key_to_public_key(json_req["sender_public_key"]), None,
+                              crypto.ascii_key_to_public_key(json_req["recipient_public_key"]), amount)
     transaction.signature = crypto.ascii_to_binary(signature)
 
     if not transaction.is_valid():
-        return "Transaction is not valid", 400
+        return "Transaction Signature is not valid", 400
 
     blockchain.transactions.append(transaction)
+
+    return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
 
 @app.route("/api/transactions", methods=["GET"])
 def get_transactions():
-    return jsonify(blockchain.transactions), 200
+    return json.dumps(blockchain.transactions, default=crypto.serializer), 200
 
 
 @app.route("/api/chain", methods=["GET"])
