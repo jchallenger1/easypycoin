@@ -92,7 +92,7 @@ def generate_transaction():
 
 @app.route("/api/transactions", methods=["GET"])
 def get_transactions():
-    return jsonify(blockchain.transactions), 200
+    return json.dumps(blockchain.transactions, default=crypto.serializer), 200
 
 
 @app.route("/api/chain", methods=["GET"])

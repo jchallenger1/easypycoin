@@ -87,6 +87,27 @@ function broadcastTransaction() {
     });
 }
 
+function createHTMLTableStr(transaction, keyObjects) {
+    let trim = (str ) => {
+        if (str.length > 80)
+            return str.substring(0, 40) + "..." + str.substring(str.length - 40, str.length);
+        return str;
+    }
+    let text = `<tr>`;
+    for (const key of keyObjects)
+        text += `<td>${trim(transaction[key])}</td>`;
+    return text + `</tr>`;
+}
+
+function refreshTransactions() {
+    $.getJSON(`${hostname}/api/transactions`, (json) => {
+        for (const transaction of json){
+            $("#transaction-table").append(createHTMLTableStr(transaction,
+                ["sender_public_key", "recipient_public_key", "amount"]))
+        }
+    });
+}
+
 $(document).ready(function() {
     // Allows navigation of the tabs
     $(".nav li a").on("click", () => {
@@ -104,6 +125,8 @@ $(document).ready(function() {
     $("#sign-trans-btn").on("click", signTransaction);
 
     $("#broadcast-trans-btn").on("click", broadcastTransaction);
+
+    $("#refresh-trans-button").on("click", refreshTransactions);
 
 });
 

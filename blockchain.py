@@ -172,3 +172,10 @@ def ascii_key_to_public_key(ascii_key):
 # Function loads an ascii key to form a cryptography.hazmat RSA private key
 def ascii_key_to_private_key(ascii_key, password=None):
     return serialization.load_der_private_key(binascii.unhexlify(ascii_key), password)
+
+
+def serializer(obj):
+    if isinstance(obj, Transaction):
+        return obj.to_ascii_dict()
+
+    return obj.__dict__
