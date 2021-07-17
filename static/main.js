@@ -1,5 +1,7 @@
 const hostname = "http://127.0.0.1:5000"
 
+let miningTransactions = []
+
 // Function creates an HTML string of an alert message. The messageType dictates the coloring of said message
 function createHTMLAlertMessage(message, messageType = "danger") {
     let htmlMessage = document.createElement("div");
@@ -32,12 +34,12 @@ function generateCryptoKeys() {
 
 function getTransactionDataFieldsToJson() {
     return JSON.stringify({
-        "sender_private_key" : $("#private-key-form-mktrans").val(),
-        "sender_public_key" : $("#public-key-mktrans").val(),
-        "recipient_public_key" : $("#recipient-address-mktrans").val(),
-        "amount" : $("#amount-mktrans").val(),
-        "signature" : $("#signature-mktrans").val(),
-        "uuid" : $("#uuidv4-mktrans-form").val(),
+        "sender_private_key": $("#private-key-form-mktrans").val(),
+        "sender_public_key": $("#public-key-mktrans").val(),
+        "recipient_public_key": $("#recipient-address-mktrans").val(),
+        "amount": $("#amount-mktrans").val(),
+        "signature": $("#signature-mktrans").val(),
+        "uuid": $("#uuidv4-mktrans-form").val(),
     });
 }
 
@@ -84,17 +86,19 @@ function broadcastTransaction() {
     });
 }
 
-    // Function trims a string and adds ... between if its over a certain length, returns original string if not over length
+// Function trims a string and adds ... between if its over a certain length, returns original string if not over length
 function trimTableStr(trimStr) {
     if (trimStr.length > 60)
-            return trimStr.substring(0, 30) + "..." + trimStr.substring(trimStr.length - 30, trimStr.length);
-        return trimStr;
+        return trimStr.substring(0, 30) + "..." + trimStr.substring(trimStr.length - 30, trimStr.length);
+    return trimStr;
 }
 
 // Function takes a transaction object and extracts all keys from keyObjects to form an HTML <tr> row
 function createHTMLTableStr(transaction, keyObjects) {
 
-    if (!_.every(keyObjects, (field) => { return field in transaction; })) {
+    if (!_.every(keyObjects, (field) => {
+        return field in transaction;
+    })) {
         console.log("Error creating a table row. Missing keyObject!");
         return;
     }
@@ -105,8 +109,8 @@ function createHTMLTableStr(transaction, keyObjects) {
     for (const key of keyObjects)
         // Add in the key data-value and data-key for easy extraction for copy button
         text += `<td data-value="${transaction[key]}" data-key="${key}">${trimTableStr(transaction[key])}</td>`;
-        // Create a copy button
-        text += `<td><button class="btn btn-primary tr-copy-btn">
+    // Create a copy button
+    text += `<td><button class="btn btn-primary tr-copy-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
                       <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
                       <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
@@ -119,7 +123,7 @@ function createHTMLTableStr(transaction, keyObjects) {
 function refreshTransactions() {
     $.getJSON(`${hostname}/api/transactions`, (json) => {
         for (const transaction of json)
-            $("#transaction-table").empty().append(createHTMLTableStr(transaction,
+            $("#view-trans-table").empty().append(createHTMLTableStr(transaction,
                 ["uuid", "sender_public_key", "recipient_public_key", "amount"]));
     });
 }
@@ -179,6 +183,20 @@ $(document).ready(function () {
 
     $("#refresh-uuidv4-btn").on("click", () => {
         $("#uuidv4-mktrans-form").val(uuidv4());
+    });
+
+    $("#mine-btn").on("click", function () {
+        $("#blockchain-table").children("tr").each(function (index, trElement) {
+            let dict = {}
+            trElement.children().each(function (index, element) {
+                element.getAttribute("data-key")
+                if (element.hasAttribute("data-key") && element.hasAttribute("data-value"))
+                    dict[element.getAttribute("data-key")] = element.getAttribute("data-value");
+            });
+            let transaction = JSON.stringify(dict);
+            miningTransactions.push([transaction, trElement]);
+        });
+
     });
 });
 

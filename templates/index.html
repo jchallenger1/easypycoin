@@ -148,6 +148,17 @@
                     </tbody>
                 </table>
             </div>
+            <div class="form-group row p-3">
+                <label for="miner-public-key" class="col-sm-2 col-form-label">Miner's Public Key</label>
+                <textarea class="form-control col-sm-6" id="miner-public-key"></textarea>
+            </div>
+            <div class="container-fluid text-center">
+                <button class="btn btn-outline-primary btn-large p-2 mr-5" id="mine-btn">Mine Transactions</button>
+                <button class="btn btn-outline-primary btn-large p-2 ml-5" id="stop-mine-btn">Stop Mining Transactions</button>
+            </div>
+            <div class="alert alert-primary text-center container mt-5" id="mine-status">
+                Status: <b>Not mining</b>
+            </div>
         </div>
 
         <!-- Blockchain Tab -->
