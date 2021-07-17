@@ -19,13 +19,12 @@ class Transaction:
     # Creates a transaction object, where
     # keys are of type cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey(/RSAPublicKey)
     # amount = floating point
-    def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount):
+    def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount, uuid):
         self.sender_public_key = sender_public_key
         self.sender_private_key = sender_private_key
         self.recipient_public_key = recipient_public_key
         self.amount = amount
-        self.timestamp = datetime.now()
-        self.uuid = uuid.uuid4()
+        self.uuid = uuid
         self.signature = ""
 
     # Function returns a dictionary of this transaction, without the private key
@@ -34,8 +33,7 @@ class Transaction:
             "sender_public_key": self.sender_public_key,
             "recipient_public_key": self.recipient_public_key,
             "amount": self.amount,
-            # "timestamp": self.timestamp,
-            # "uuid": self.uuid
+            "uuid": self.uuid
         }
 
     def to_ascii_dict(self) -> dict:
@@ -45,8 +43,7 @@ class Transaction:
             "recipient_public_key": binary_to_ascii(
                 self.recipient_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
             "amount": self.amount,
-            # "timestamp": self.timestamp,
-            # "uuid": self.uuid
+            "uuid": self.uuid
         }
 
     # Function converts this object to a string, without the private key
@@ -177,5 +174,6 @@ def ascii_key_to_private_key(ascii_key, password=None):
 def serializer(obj):
     if isinstance(obj, Transaction):
         return obj.to_ascii_dict()
-
+    if isinstance(obj, uuid.UUID):
+        return {"uuid": str(obj)}
     return obj.__dict__

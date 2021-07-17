@@ -1,8 +1,10 @@
 import json
+import uuid
 
 from flask import Flask, jsonify, request, render_template
 from blockchain import Wallet, Transaction, BlockChain
 import blockchain as crypto
+from uuid import uuid4
 
 app = Flask(__name__)
 blockchain = BlockChain()
@@ -25,31 +27,73 @@ def create_new_wallet():
     return response
 
 
-# Allows for signing a transaction
-@app.route("/api/transaction/sign", methods=["POST"])
-def sign_transaction():
-    json_req = request.json
-    if json_req is None:
-        return "Missing JSON POST request data", 400
+class CheckTransReturn:
+    def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount, uuidv4, signature):
+        self.sender_public_key = sender_public_key
+        self.sender_private_key = sender_private_key
+        self.recipient_public_key = recipient_public_key
+        self.amount = amount
+        self.uuidv4 = uuidv4
+        self.signature = signature
 
-    sender_public_key = json_req["sender_public_key"]
-    sender_private_key = json_req["sender_private_key"]
-    recipient_public_key = json_req["recipient_public_key"]
-    amount = json_req["amount"]
 
+def check_transaction_request(json_request, check_private_key=False, check_signature=False) -> CheckTransReturn:
+    if json_request is None:
+        raise RuntimeError("Missing JSON POST request data")
+
+    sender_public_key = json_request["sender_public_key"]
+    sender_private_key = json_request["sender_private_key"]
+    recipient_public_key = json_request["recipient_public_key"]
+    amount = json_request["amount"]
+    uuidv4 = json_request["uuid"]
+    signature = json_request["signature"]
+
+    # UUIDV4 Checking
+    try:
+        uuidv4 = uuid.UUID(uuidv4)
+    except ValueError as ve:
+        raise ValueError("Given UUID is not a valid UUID string")
+
+    if uuidv4.version != 4:
+        raise ValueError(f"Invalid UUID version, expected version 4, received ${uuidv4.version}")
+
+    # Amount Checking
     try:
         amount = int(amount)
     except ValueError:
-        return "amount is not an integer", 400
+        raise ValueError("amount is not an integer")
     if amount <= 0:
-        return "amount to send cannot be less than 0", 400
+        raise ValueError("amount to send cannot be less than 0")
 
-    if [None, ""] in [sender_public_key, sender_private_key, recipient_public_key, amount]:
-        return "A field is missing to sign a transaction", 400
+    # Missing Values Checking
+    requirements = [sender_public_key, recipient_public_key, amount, uuidv4]
+    if check_signature:
+        requirements.append(signature)
+    if check_private_key:
+        requirements.append(sender_private_key)
 
-    wallet = Wallet.from_ascii_keys(sender_private_key, sender_public_key)
-    transaction = Transaction(wallet.public_key, wallet.private_key,
-                              crypto.ascii_key_to_public_key(recipient_public_key), amount)
+    if [None, ""] in requirements:
+        raise ValueError("A field is missing")
+
+    return CheckTransReturn(sender_public_key, sender_private_key, recipient_public_key, amount, uuidv4, signature)
+
+
+# Allows for signing a transaction
+# Our server automatically assigns UUIDs to a transaction to prevent copying
+@app.route("/api/transaction/sign", methods=["POST"])
+def sign_transaction():
+    json_post = None
+    try:
+        json_post = check_transaction_request(request.json, check_private_key=True)
+    except Exception as e:
+        return str(e), 400
+
+    wallet = Wallet.from_ascii_keys(json_post.sender_private_key, json_post.sender_public_key)
+    transaction = Transaction(wallet.public_key,
+                              wallet.private_key,
+                              crypto.ascii_key_to_public_key(json_post.recipient_public_key),
+                              json_post.amount,
+                              json_post.uuidv4)
     transaction.sign()
 
     response = transaction.to_ascii_dict()
@@ -61,26 +105,18 @@ def sign_transaction():
 # Generates a new transaction and stores it on this node
 @app.route("/api/transaction", methods=["POST"])
 def generate_transaction():
-    json_req = request.json
-    if json_req is None:
-        return "Missing JSON POST request data", 400
-
-    amount = json_req["amount"]
+    json_post = None
     try:
-        amount = int(amount)
-    except ValueError:
-        return "amount is not an integer", 400
-    if amount <= 0:
-        return "amount to send cannot be less than 0", 400
+        json_post = check_transaction_request(request.json, check_signature=True)
+    except Exception as e:
+        return str(e), 400
 
-    if [None, ""] in [json_req["signature"], json_req["sender_public_key"], json_req["recipient_public_key"], amount]:
-        return "A field is missing to sign a transaction", 400
-
-    signature = json_req["signature"]
-
-    transaction = Transaction(crypto.ascii_key_to_public_key(json_req["sender_public_key"]), None,
-                              crypto.ascii_key_to_public_key(json_req["recipient_public_key"]), amount)
-    transaction.signature = crypto.ascii_to_binary(signature)
+    transaction = Transaction(crypto.ascii_key_to_public_key(json_post.sender_public_key),
+                              None,
+                              crypto.ascii_key_to_public_key(json_post.recipient_public_key),
+                              json_post.amount,
+                              json_post.uuidv4)
+    transaction.signature = crypto.ascii_to_binary(json_post.signature)
 
     if not transaction.is_valid():
         return "Transaction Signature is not valid", 400

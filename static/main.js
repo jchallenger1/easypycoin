@@ -35,12 +35,14 @@ function getTransactionDataFieldsToJson() {
     let recipient_public_key = $("#recipient-address-mktrans").val();
     let amount = $("#amount-mktrans").val();
     let signature = $("#signature-mktrans").val();
+    let uuid = $("#uuidv4-mktrans-form").val()
     let request = {
         sender_private_key,
         sender_public_key,
         recipient_public_key,
         amount,
-        signature
+        signature,
+        uuid
     };
     return JSON.stringify(request);
 }
@@ -72,10 +74,11 @@ function broadcastTransaction() {
         data:getTransactionDataFieldsToJson(),
         contentType:"application/json; charset=utf-8",
         dataType:"json",
-        success: function (data) {
+        success: function () {
             $("#messages").append(createHTMLAlertMessage("Your transaction was successfully broadcast to nodes",
                 "success"));
             $("#signature-mktrans").val("");
+            $("#uuidv4-mktrans-form").val("");
         },
         error: function(data) {
             let errorMessage = `An error has occurred attempting to broadcast this transaction<br>
@@ -163,6 +166,6 @@ $(document).ready(function() {
 
     $("#refresh-trans-button").on("click", refreshTransactions);
 
-
+    $("#refresh-uuidv4-btn").on("click", () => { $("#uuidv4-mktrans-form").val(uuidv4()); });
 });
 
