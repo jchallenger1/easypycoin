@@ -175,5 +175,5 @@ def serializer(obj):
     if isinstance(obj, Transaction):
         return obj.to_ascii_dict()
     if isinstance(obj, uuid.UUID):
-        return {"uuid": str(obj)}
+        return str(obj)
     return obj.__dict__
