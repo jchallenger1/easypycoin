@@ -118,10 +118,9 @@ function createHTMLTableStr(transaction, keyObjects) {
 
 function refreshTransactions() {
     $.getJSON(`${hostname}/api/transactions`, (json) => {
-        for (const transaction of json) {
-            $("#transaction-table").append(createHTMLTableStr(transaction,
-                ["uuid", "sender_public_key", "recipient_public_key", "amount"]))
-        }
+        for (const transaction of json)
+            $("#transaction-table").empty().append(createHTMLTableStr(transaction,
+                ["uuid", "sender_public_key", "recipient_public_key", "amount"]));
     });
 }
 
