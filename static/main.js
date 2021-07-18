@@ -1,6 +1,6 @@
 const hostname = "http://127.0.0.1:5000"
 
-let miningTransactions = []
+let currentStoredTransactionUUIDs = []
 
 // Function creates an HTML string of an alert message. The messageType dictates the coloring of said message
 function createHTMLAlertMessage(message, messageType = "danger") {
@@ -122,9 +122,14 @@ function createHTMLTableStr(transaction, keyObjects) {
 
 function refreshTransactions() {
     $.getJSON(`${hostname}/api/transactions`, (json) => {
-        for (const transaction of json)
-            $("#view-trans-table").empty().append(createHTMLTableStr(transaction,
+        let table =$("#view-trans-table")
+        table.empty()
+        currentStoredTransactionUUIDs = [];
+        for (const transaction of json) {
+            currentStoredTransactionUUIDs.push(transaction["uuid"]);
+            table.append(createHTMLTableStr(transaction,
                 ["uuid", "sender_public_key", "recipient_public_key", "amount"]));
+        }
     });
 }
 
@@ -137,6 +142,10 @@ function textToClipboard(text) {
     dummy.select();
     document.execCommand("copy");
     document.body.removeChild(dummy);
+}
+
+function promiseMine() {
+
 }
 
 $(document).ready(function () {
@@ -186,15 +195,9 @@ $(document).ready(function () {
     });
 
     $("#mine-btn").on("click", function () {
-        $("#blockchain-table").children("tr").each(function (index, trElement) {
-            let dict = {}
-            trElement.children().each(function (index, element) {
-                element.getAttribute("data-key")
-                if (element.hasAttribute("data-key") && element.hasAttribute("data-value"))
-                    dict[element.getAttribute("data-key")] = element.getAttribute("data-value");
-            });
-            let transaction = JSON.stringify(dict);
-            miningTransactions.push([transaction, trElement]);
+
+        $.get(`${hostname}/api/mine`, (data) => {
+           console.log(data)
         });
 
     });

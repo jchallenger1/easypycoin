@@ -1,3 +1,4 @@
+import base64
 import binascii
 import uuid
 from datetime import datetime
@@ -43,7 +44,7 @@ class Transaction:
             "recipient_public_key": binary_to_ascii(
                 self.recipient_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
             "amount": self.amount,
-            "uuid": self.uuid
+            "uuid": str(self.uuid)
         }
 
     # Function converts this object to a string, without the private key
@@ -80,8 +81,9 @@ class Transaction:
 class Block:
     def __init__(self, transactions, previous_block_hash):
         self.transactions = transactions
-        self.proof_of_work = 0
+        self.proof_of_work = b"0"
         self.previous_block_hash = previous_block_hash
+        self.uuid = uuid.uuid4()
 
     def hash(self) -> bytes:
         hash_creator = hashlib.sha256()
@@ -89,16 +91,28 @@ class Block:
             hash_creator.update(str(transaction).encode("ascii"))
         hash_creator.update(self.previous_block_hash)
         hash_creator.update(self.proof_of_work)
+        hash_creator.update(str(self.uuid).encode("utf-8"))
         return hash_creator.digest()
 
     def is_valid(self) -> bool:
         return all(transaction.is_valid() for transaction in self.transactions)
 
+    # Function converts this object to a string, without the private key
+    def __str__(self) -> str:
+        return str(dict(self))
+
+    def __iter__(self):
+        yield "uuid", str(self.uuid)
+        yield "transactions", [trans.to_ascii_dict() for trans in self.transactions]
+        yield "previous_block_hash", base64.b64encode(self.previous_block_hash)
+        yield "proof_of_work", base64.b64encode(self.proof_of_work)
+
 
 class BlockChain:
     def __init__(self):
         self.transactions = []
-        self.chain = [Block([], 0)]
+        self.minable_blocks = []
+        self.chain = [Block([], b"0")]
         self.nodes = set()
         self.node_uuid = uuid.uuid4()
 
@@ -109,9 +123,24 @@ class BlockChain:
             print("Not enough transactions to make a block")
             return None
 
-        transactions = self.transactions[:BlockChain.max_transactions_const]
+        # Get the max amount of transactions that can fit on the block that are not already in other minable blocks
+        # First find the transactions currently being mined
+        transactions_currently_mining = []
+        for block in self.minable_blocks:
+            transactions_currently_mining.extend(block.transactions)
+
+        max_transactions = self.transactions[:BlockChain.max_transactions_const]
+        transactions = []
+        # now check
+        for transaction in max_transactions:
+            if transaction not in transactions_currently_mining:
+                transactions.append(transaction)
+
         prev_block_hash = self.chain[-1].hash()
-        return Block(transactions, prev_block_hash)
+        new_block = Block(transactions, prev_block_hash)
+
+        self.minable_blocks.append(new_block)
+        return new_block
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
@@ -175,5 +204,7 @@ def serializer(obj):
     if isinstance(obj, Transaction):
         return obj.to_ascii_dict()
     if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, Block):
         return str(obj)
     return obj.__dict__

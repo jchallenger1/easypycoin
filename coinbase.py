@@ -126,9 +126,37 @@ def generate_transaction():
     return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
 
-@app.route("/api/transactions", methods=["GET"])
+@app.route("/api/transaction/<uuid:transaction_uuid>", methods=["GET"])
+def get_transaction(transaction_uuid):
+    matches = [trans for trans in blockchain.transactions if trans.uuid == transaction_uuid]
+    if len(matches) == 0:
+        return "{}", 200
+    elif len(matches) > 1:
+        print(f"FATAL: Multiple uuids detected in a blockchain with uuid ${transaction_uuid}")
+
+    return json.dumps(matches[0], default=crypto.serializer), 200
+
+@app.route("/api/transactions", methods=["GET", "POST"])
 def get_transactions():
-    return json.dumps(blockchain.transactions, default=crypto.serializer), 200
+    if request.method == "GET":
+        return json.dumps(blockchain.transactions, default=crypto.serializer), 200
+
+    if request.json is None or request.json["uuids"] is None:
+        return "{}", 200
+
+    return json.dumps(
+        [transaction for transaction in blockchain.transactions if str(transaction.uuid) in request.json["uuids"]],
+        default=crypto.serializer
+    ), 200
+
+
+@app.route("/api/mine", methods=["GET", "POST"])
+def mine():
+    blockchain.create_block()
+    return json.dumps(
+        blockchain.minable_blocks,
+        default=crypto.serializer
+    ), 200
 
 
 @app.route("/api/chain", methods=["GET"])
