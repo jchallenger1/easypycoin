@@ -1,7 +1,6 @@
-import base64
 import binascii
 import uuid
-from datetime import datetime
+from typing import List
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -79,20 +78,20 @@ class Transaction:
 
 
 class Block:
-    def __init__(self, transactions, previous_block_hash):
+    def __init__(self, transactions: List[Transaction], previous_block_hash: str):
         self.transactions = transactions
-        self.proof_of_work = b"0"
+        self.proof_of_work = 0
         self.previous_block_hash = previous_block_hash
         self.uuid = uuid.uuid4()
 
-    def hash(self) -> bytes:
+    def hash(self) -> str:
         hash_creator = hashlib.sha256()
         for transaction in self.transactions:
             hash_creator.update(str(transaction).encode("ascii"))
-        hash_creator.update(self.previous_block_hash)
-        hash_creator.update(self.proof_of_work)
+        hash_creator.update(bytes.fromhex(self.previous_block_hash))
+        hash_creator.update(str(self.proof_of_work).encode("ascii"))
         hash_creator.update(str(self.uuid).encode("utf-8"))
-        return hash_creator.digest()
+        return hash_creator.digest().hex()
 
     def is_valid(self) -> bool:
         return all(transaction.is_valid() for transaction in self.transactions)
@@ -101,18 +100,25 @@ class Block:
     def __str__(self) -> str:
         return str(dict(self))
 
+    # For str()
     def __iter__(self):
         yield "uuid", str(self.uuid)
         yield "transactions", [trans.to_ascii_dict() for trans in self.transactions]
-        yield "previous_block_hash", base64.b64encode(self.previous_block_hash)
-        yield "proof_of_work", base64.b64encode(self.proof_of_work)
+        yield "previous_block_hash", self.previous_block_hash
+        yield "proof_of_work", self.proof_of_work
+
+    @staticmethod
+    def genesis_block():
+        hash_creator = hashlib.sha256()
+        hash_creator.update(b"0")  # Value from constructor
+        return Block([], hash_creator.digest().hex())
 
 
 class BlockChain:
     def __init__(self):
         self.transactions = []
         self.minable_blocks = []
-        self.chain = [Block([], b"0")]
+        self.chain = [Block.genesis_block()]
         self.nodes = set()
         self.node_uuid = uuid.uuid4()
 

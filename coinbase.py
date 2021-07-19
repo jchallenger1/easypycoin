@@ -136,6 +136,7 @@ def get_transaction(transaction_uuid):
 
     return json.dumps(matches[0], default=crypto.serializer), 200
 
+
 @app.route("/api/transactions", methods=["GET", "POST"])
 def get_transactions():
     if request.method == "GET":
@@ -154,7 +155,7 @@ def get_transactions():
 def mine():
     blockchain.create_block()
     return json.dumps(
-        blockchain.minable_blocks,
+        {"blocks": blockchain.minable_blocks},
         default=crypto.serializer
     ), 200
 
@@ -166,3 +167,4 @@ def get_chain():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
