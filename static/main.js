@@ -197,9 +197,18 @@ $(document).ready(function () {
     $("#mine-btn").on("click", function () {
 
         $.get(`${hostname}/api/mine`, (data) => {
-           console.log(data)
+            let d = JSON.parse(data)
+            console.log(data)
+            console.log(atob(d["blocks"][0]))
+            digestMessage(atob(d["blocks"][0])).then( digestMessage => console.log(digestMessage));
         });
 
     });
 });
 
+async function digestMessage(message) {
+  const msgUint8 = new TextEncoder().encode(message);                           // encode as (utf-8) Uint8Array
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);           // hash the message
+  const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+}

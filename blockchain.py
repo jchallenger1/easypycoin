@@ -1,3 +1,4 @@
+import base64
 import binascii
 import uuid
 from typing import List
@@ -89,9 +90,25 @@ class Block:
         for transaction in self.transactions:
             hash_creator.update(str(transaction).encode("ascii"))
         hash_creator.update(bytes.fromhex(self.previous_block_hash))
-        hash_creator.update(str(self.proof_of_work).encode("ascii"))
         hash_creator.update(str(self.uuid).encode("utf-8"))
+        hash_creator.update(str(self.proof_of_work).encode("ascii"))
         return hash_creator.digest().hex()
+
+    def get_mining_input(self, include_proof_of_work=False) -> str:
+        return str(base64.b64encode(self.to_bytes(include_proof_of_work)), "utf-8")
+
+    def to_bytes(self, include_proof_of_work=False) -> bytes:
+        mining_bytes = bytearray()
+        for transaction in self.transactions:
+            mining_bytes += str(transaction).encode("ascii")
+        mining_bytes += bytes.fromhex(self.previous_block_hash)
+        mining_bytes += str(self.uuid).encode("utf-8")
+        if include_proof_of_work:
+            mining_bytes += str(self.proof_of_work).encode("ascii")
+        return mining_bytes
+
+    def hash2(self) -> str:
+        return hashlib.sha256(self.to_bytes()).hexdigest()
 
     def is_valid(self) -> bool:
         return all(transaction.is_valid() for transaction in self.transactions)

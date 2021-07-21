@@ -154,8 +154,14 @@ def get_transactions():
 @app.route("/api/mine", methods=["GET", "POST"])
 def mine():
     blockchain.create_block()
+    b = blockchain.minable_blocks[0]
+    print("Prev Hash:" + b.hash())
+    print("Mining input bytes:")
+    print(b.to_bytes())
+    print("Mining input:" + b.get_mining_input())
+    print("Hash 2:" + b.hash2())
     return json.dumps(
-        {"blocks": blockchain.minable_blocks},
+        {"blocks": [block.get_mining_input() for block in blockchain.minable_blocks]},
         default=crypto.serializer
     ), 200
 
