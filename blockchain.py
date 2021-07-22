@@ -107,8 +107,8 @@ class Block:
             mining_bytes += str(self.proof_of_work).encode("ascii")
         return mining_bytes
 
-    def hash(self) -> str:
-        return hashlib.sha256(self.to_bytes()).hexdigest()
+    def hash(self, include_proof_of_work=True) -> str:
+        return hashlib.sha256(self.to_bytes(include_proof_of_work)).hexdigest()
 
     def is_valid(self) -> bool:
         return all(transaction.is_valid() for transaction in self.transactions)

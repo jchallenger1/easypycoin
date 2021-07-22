@@ -203,40 +203,30 @@ $(document).ready(function () {
             //const blob = b64toBlob(base64block)
             const array = _base64ToArrayBuffer(base64block)
             console.log(sha256(array))
-            console.log(sha256(array + 100));
-
+            let newf = appendArrayBuffers(array, new TextEncoder().encode("100"));
+            console.log(sha256(newf))
             //blob.arrayBuffer().then(buffer => console.log("BLOB: " + sha256(buffer)));
         });
     });
 });
 
+
+// https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
 function _base64ToArrayBuffer(base64str) {
-    var binary_string = atob(base64str);
-    var len = binary_string.length;
-    var bytes = new Uint8Array(len);
-    for (var i = 0; i < len; i++) {
+    let binary_string = atob(base64str);
+    let len = binary_string.length;
+    let bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
         bytes[i] = binary_string.charCodeAt(i);
     }
     return bytes.buffer;
 }
 
 
-const b64toBlob = (b64Data, contentType='', sliceSize=512) => {
-  const byteCharacters = atob(b64Data);
-  const byteArrays = [];
-
-  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-    const slice = byteCharacters.slice(offset, offset + sliceSize);
-
-    const byteNumbers = new Array(slice.length);
-    for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-
-    const byteArray = new Uint8Array(byteNumbers);
-    byteArrays.push(byteArray);
-  }
-
-  const blob = new Blob(byteArrays, {type: contentType});
-  return blob;
+// https://gist.github.com/72lions/4528834
+function appendArrayBuffers(buffer1, buffer2) {
+  let tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+  tmp.set(new Uint8Array(buffer1), 0);
+  tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+  return tmp.buffer;
 }

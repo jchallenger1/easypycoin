@@ -155,10 +155,8 @@ def get_transactions():
 def mine():
     blockchain.create_block()
     b = blockchain.minable_blocks[0]
-    print("Mining input bytes:")
-    print(b.to_bytes())
-    print("Mining input:" + b.get_mining_input())
-    print("Hash BEF:" + b.hash())
+    print("Hash BEF:" + b.hash(False))
+    print("Hash BEFw/t: " + b.hash(True))
     b.proof_of_work = 100
     print("Hash AFT: " + b.hash())
     return json.dumps(
