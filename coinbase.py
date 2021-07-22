@@ -155,11 +155,12 @@ def get_transactions():
 def mine():
     blockchain.create_block()
     b = blockchain.minable_blocks[0]
-    print("Prev Hash:" + b.hash())
     print("Mining input bytes:")
     print(b.to_bytes())
     print("Mining input:" + b.get_mining_input())
-    print("Hash 2:" + b.hash2())
+    print("Hash BEF:" + b.hash())
+    b.proof_of_work = 100
+    print("Hash AFT: " + b.hash())
     return json.dumps(
         {"blocks": [block.get_mining_input() for block in blockchain.minable_blocks]},
         default=crypto.serializer

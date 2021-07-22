@@ -198,17 +198,45 @@ $(document).ready(function () {
 
         $.get(`${hostname}/api/mine`, (data) => {
             let d = JSON.parse(data)
-            console.log(data)
-            console.log(atob(d["blocks"][0]))
-            digestMessage(atob(d["blocks"][0])).then( digestMessage => console.log(digestMessage));
-        });
+            let base64block = JSON.parse(data)["blocks"][0]
 
+            //const blob = b64toBlob(base64block)
+            const array = _base64ToArrayBuffer(base64block)
+            console.log(sha256(array))
+            console.log(sha256(array + 100));
+
+            //blob.arrayBuffer().then(buffer => console.log("BLOB: " + sha256(buffer)));
+        });
     });
 });
 
-async function digestMessage(message) {
-  const msgUint8 = new TextEncoder().encode(message);                           // encode as (utf-8) Uint8Array
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);           // hash the message
-  const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+function _base64ToArrayBuffer(base64str) {
+    var binary_string = atob(base64str);
+    var len = binary_string.length;
+    var bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+    }
+    return bytes.buffer;
+}
+
+
+const b64toBlob = (b64Data, contentType='', sliceSize=512) => {
+  const byteCharacters = atob(b64Data);
+  const byteArrays = [];
+
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    byteArrays.push(byteArray);
+  }
+
+  const blob = new Blob(byteArrays, {type: contentType});
+  return blob;
 }

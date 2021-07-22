@@ -84,16 +84,16 @@ class Block:
         self.proof_of_work = 0
         self.previous_block_hash = previous_block_hash
         self.uuid = uuid.uuid4()
-
+    """
     def hash(self) -> str:
         hash_creator = hashlib.sha256()
         for transaction in self.transactions:
             hash_creator.update(str(transaction).encode("ascii"))
         hash_creator.update(bytes.fromhex(self.previous_block_hash))
-        hash_creator.update(str(self.uuid).encode("utf-8"))
+        hash_creator.update(str(self.uuid).encode("ascii"))
         hash_creator.update(str(self.proof_of_work).encode("ascii"))
         return hash_creator.digest().hex()
-
+    """
     def get_mining_input(self, include_proof_of_work=False) -> str:
         return str(base64.b64encode(self.to_bytes(include_proof_of_work)), "utf-8")
 
@@ -102,12 +102,12 @@ class Block:
         for transaction in self.transactions:
             mining_bytes += str(transaction).encode("ascii")
         mining_bytes += bytes.fromhex(self.previous_block_hash)
-        mining_bytes += str(self.uuid).encode("utf-8")
+        mining_bytes += str(self.uuid).encode("ascii")
         if include_proof_of_work:
             mining_bytes += str(self.proof_of_work).encode("ascii")
         return mining_bytes
 
-    def hash2(self) -> str:
+    def hash(self) -> str:
         return hashlib.sha256(self.to_bytes()).hexdigest()
 
     def is_valid(self) -> bool:
