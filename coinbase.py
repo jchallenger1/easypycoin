@@ -36,7 +36,6 @@ class CheckTransReturn:
         self.uuidv4 = uuidv4
         self.signature = signature
 
-
 def check_transaction_request(json_request, check_private_key=False, check_signature=False) -> CheckTransReturn:
     if json_request is None:
         raise RuntimeError("Missing JSON POST request data")
@@ -153,16 +152,42 @@ def get_transactions():
 
 @app.route("/api/mine", methods=["GET", "POST"])
 def mine():
-    blockchain.create_block()
-    b = blockchain.minable_blocks[0]
-    print("Hash BEF:" + b.hash(False))
-    print("Hash BEFw/t: " + b.hash(True))
-    b.proof_of_work = 100
-    print("Hash AFT: " + b.hash())
-    return json.dumps(
-        {"blocks": [block.get_mining_input() for block in blockchain.minable_blocks]},
-        default=crypto.serializer
-    ), 200
+    if request.method == "GET":
+        blockchain.create_block()
+        b = blockchain.minable_blocks[0]
+        print("Hash BEF:" + b.hash(False))
+        print("Hash BEFw/t: " + b.hash(True))
+        b.proof_of_work = 100
+        print("Hash AFT: " + b.hash())
+        return json.dumps(
+            {"blocks": [block.get_mining_input() for block in blockchain.minable_blocks]},
+            default=crypto.serializer
+        ), 200
+    block_uuid = request.json["uuid"]
+    miner_public_key = request.json["miner_public_key"]
+    proof_of_work = request.json["proof_of_work"]
+
+    if [None, ""] in [block_uuid, miner_public_key, proof_of_work]:
+        return "Missing POST values", 400
+
+    found_block = None
+    for block in blockchain.minable_blocks:
+        if block.uuid == block_uuid:
+            found_block = block
+            break
+
+    if found_block is None:
+        block_already_minded = False
+        for block in blockchain.chain:
+            if block.uuid == block_uuid:
+                block_already_minded = True
+                break
+        return ("This block has already been mined" if block_already_minded
+                else f"This block with uuid {block_uuid} does not exist!"), 400
+
+
+    previous_proof = found_block.proof_of_work
+    found_block.proof_of_work = proof_of_work
 
 
 @app.route("/api/chain", methods=["GET"])
