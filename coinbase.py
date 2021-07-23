@@ -27,6 +27,29 @@ def create_new_wallet():
     return response
 
 
+def check_int(str_int: str) -> int:
+    try:
+        true_int = int(str_int)
+    except ValueError:
+        raise ValueError("amount is not an integer")
+    if true_int <= 0:
+        raise ValueError("amount to send cannot be less than 0")
+    return true_int
+
+
+def check_uuid(str_uuid: str) -> uuid:
+    # UUIDV4 Checking
+    try:
+        uuidv4 = uuid.UUID(str_uuid)
+    except ValueError as ve:
+        raise ValueError("Given UUID is not a valid UUID string")
+
+    if uuidv4.version != 4:
+        raise ValueError(f"Invalid UUID version, expected version 4, received ${uuidv4.version}")
+
+    return uuidv4
+
+
 class CheckTransReturn:
     def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount, uuidv4, signature):
         self.sender_public_key = sender_public_key
@@ -36,6 +59,7 @@ class CheckTransReturn:
         self.uuidv4 = uuidv4
         self.signature = signature
 
+
 def check_transaction_request(json_request, check_private_key=False, check_signature=False) -> CheckTransReturn:
     if json_request is None:
         raise RuntimeError("Missing JSON POST request data")
@@ -43,26 +67,9 @@ def check_transaction_request(json_request, check_private_key=False, check_signa
     sender_public_key = json_request["sender_public_key"]
     sender_private_key = json_request["sender_private_key"]
     recipient_public_key = json_request["recipient_public_key"]
-    amount = json_request["amount"]
-    uuidv4 = json_request["uuid"]
+    amount = check_int(json_request["amount"])
+    uuidv4 = check_uuid(json_request["uuid"])
     signature = json_request["signature"]
-
-    # UUIDV4 Checking
-    try:
-        uuidv4 = uuid.UUID(uuidv4)
-    except ValueError as ve:
-        raise ValueError("Given UUID is not a valid UUID string")
-
-    if uuidv4.version != 4:
-        raise ValueError(f"Invalid UUID version, expected version 4, received ${uuidv4.version}")
-
-    # Amount Checking
-    try:
-        amount = int(amount)
-    except ValueError:
-        raise ValueError("amount is not an integer")
-    if amount <= 0:
-        raise ValueError("amount to send cannot be less than 0")
 
     # Missing Values Checking
     requirements = [sender_public_key, recipient_public_key, amount, uuidv4]
@@ -163,31 +170,36 @@ def mine():
             {"blocks": [block.get_mining_input() for block in blockchain.minable_blocks]},
             default=crypto.serializer
         ), 200
-    block_uuid = request.json["uuid"]
+
     miner_public_key = request.json["miner_public_key"]
-    proof_of_work = request.json["proof_of_work"]
+
+    try:
+        proof_of_work = check_int(request.json["proof_of_work"])
+        block_uuid = check_uuid(request.json["uuid"])
+    except ValueError as e:
+        return str(e), 400
 
     if [None, ""] in [block_uuid, miner_public_key, proof_of_work]:
         return "Missing POST values", 400
 
-    found_block = None
-    for block in blockchain.minable_blocks:
-        if block.uuid == block_uuid:
-            found_block = block
-            break
+    error_find_block_msg, block = blockchain.find_mine_block(block_uuid)
 
-    if found_block is None:
-        block_already_minded = False
-        for block in blockchain.chain:
-            if block.uuid == block_uuid:
-                block_already_minded = True
-                break
-        return ("This block has already been mined" if block_already_minded
-                else f"This block with uuid {block_uuid} does not exist!"), 400
+    if error_find_block_msg:
+        return error_find_block_msg, 400
 
+    # Try this proof of work the miner sent and see if this works
+    error_proof_msg = block.check_proof_of_work(proof_of_work)
 
-    previous_proof = found_block.proof_of_work
-    found_block.proof_of_work = proof_of_work
+    if error_proof_msg:
+        return error_proof_msg, 400
+
+    # Checks out, now we need to add the transaction to the blockchain and remove it from minable block
+    move_error = blockchain.move_minable_block(block)
+    if move_error:
+        return move_error, 400
+
+    # Lastly, reward the miner!
+
 
 
 @app.route("/api/chain", methods=["GET"])
@@ -197,4 +209,3 @@ def get_chain():
 
 if __name__ == '__main__':
     app.run(debug=True)
-

@@ -1,7 +1,7 @@
 import base64
 import binascii
 import uuid
-from typing import List
+from typing import List, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -15,6 +15,8 @@ Class to represent a transaction inside a block
 The public key is the address of the user
 """
 
+# The number of zeros the blockchain will search for on a sha256 hash for a proof of work
+num_of_zeros = 3
 
 class Transaction:
     # Creates a transaction object, where
@@ -84,16 +86,7 @@ class Block:
         self.proof_of_work = 0
         self.previous_block_hash = previous_block_hash
         self.uuid = uuid.uuid4()
-    """
-    def hash(self) -> str:
-        hash_creator = hashlib.sha256()
-        for transaction in self.transactions:
-            hash_creator.update(str(transaction).encode("ascii"))
-        hash_creator.update(bytes.fromhex(self.previous_block_hash))
-        hash_creator.update(str(self.uuid).encode("ascii"))
-        hash_creator.update(str(self.proof_of_work).encode("ascii"))
-        return hash_creator.digest().hex()
-    """
+
     def get_mining_input(self, include_proof_of_work=False) -> str:
         return str(base64.b64encode(self.to_bytes(include_proof_of_work)), "utf-8")
 
@@ -109,6 +102,17 @@ class Block:
 
     def hash(self, include_proof_of_work=True) -> str:
         return hashlib.sha256(self.to_bytes(include_proof_of_work)).hexdigest()
+
+    def check_proof_of_work(self, other_proof: int) -> str:
+        previous_proof = self.proof_of_work
+        self.proof_of_work = other_proof
+        block_hash = self.hash()
+        start_num_zeros = '0' * num_of_zeros
+
+        if not block_hash.startswith(start_num_zeros):
+            self.proof_of_work = previous_proof
+            return f"Proof of work {other_proof} gave SHA256 {block_hash} which does not start with {start_num_zeros}"
+        return ""
 
     def is_valid(self) -> bool:
         return all(transaction.is_valid() for transaction in self.transactions)
@@ -168,6 +172,34 @@ class BlockChain:
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
         pass
+
+    def find_mine_block(self, block_uuid : uuid) -> Union[Tuple[str, Block], Tuple[str, None]]:
+        # First find the block the user is trying to mine
+        found_block = None
+        # Look in minable blocks
+        for block in self.minable_blocks:
+            if block.uuid == block_uuid:
+                found_block = block
+                break
+
+        # Block wasn't find, either it was already mined, or it doesn't exist
+        if found_block is None:
+            block_already_minded = False
+            for block in self.chain:
+                if block.uuid == block_uuid:
+                    block_already_minded = True
+                    break
+            return ("This block has already been mined" if block_already_minded
+                    else f"This block with uuid {block_uuid} does not exist!"), None
+
+        return "", found_block
+
+    def move_minable_block(self, block : Block):
+        try:
+            self.minable_blocks.remove(block)
+        except ValueError as e:
+            return f"Failure trying to remove block {block.uuid}, {str(e)}"
+        self.chain.append(block)
 
 
 class Wallet:
