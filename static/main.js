@@ -1,6 +1,7 @@
 const hostname = "http://127.0.0.1:5000"
 
 let textEncoder = new TextEncoder()
+let numZerosMining = 0;
 
 // Function creates an HTML string of an alert message. The messageType dictates the coloring of said message
 function createHTMLAlertMessage(message, messageType = "danger") {
@@ -145,6 +146,11 @@ function textToClipboard(text) {
 }
 
 $(document).ready(function () {
+    // Get the number of zeros per hash
+    $.get(`${hostname}/api/mine/numzeros`, function(data) {
+       numZerosMining = parseInt(data);
+    });
+
     // Allows navigation of the tabs
     $(".nav li a").on("click", () => {
         $(".nav li a").removeClass("active");
@@ -194,7 +200,6 @@ $(document).ready(function () {
 
         $.get(`${hostname}/api/mine`, (data) => {
             let json_data = JSON.parse(data)
-            console.log(json_data)
             let base64block = json_data["blocks"][0]["block"];
             let blockUUID = json_data["blocks"][0]["uuid"];
 
@@ -205,7 +210,7 @@ $(document).ready(function () {
             let proof_of_work = 0;
             for (let i = 0; i !== Number.MAX_VALUE / 100; ++i) {
                 let hashblock = appendArrayBuffers(miningBlock, textEncoder.encode(i.toString()));
-                if (sha256(hashblock).startsWith("000")) {
+                if (sha256(hashblock).startsWith('0'.repeat(numZerosMining))) {
                     proof_of_work = i;
                     break;
                 }
@@ -215,17 +220,17 @@ $(document).ready(function () {
                             "proof_of_work": proof_of_work.toString(),
                             "uuid": blockUUID,
                             "miner_public_key": miner_public_key});
-            console.log(jsonPostData);
+
             $.ajax({
                 url: `${hostname}/api/mine`,
                 type: "POST",
                 data:jsonPostData,
                 contentType: "application/json; charset=utf-8",
-                dataType: "json",
+                dataType: "text",
                 success: function (data) {
-                    console.log("ok")
+                    $("#messages").append(createHTMLAlertMessage(data, "success"));
                 },
-                error: function (data) {
+                error: function () {
                     let errorMessage = `An error has occurred attempting to mine<br>
                                         The server returned status ${data["statusText"]}(${data["status"]}),<br>
                                         with message: "${data["responseText"]}"

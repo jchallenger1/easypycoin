@@ -199,7 +199,12 @@ def mine():
     # This is actually implicit, since the block is in the chain, the coinbase logged the user of mining that block,
     # Thus from the server's standpoint they been rewarded crypto.block_mining_reward
     # for their address simply being there.
-    return f"Miner received {crypto.block_mining_reward} coins", 200
+    return f"Miner received {crypto.block_mining_reward} coins for {block_uuid}", 200
+
+
+@app.route("/api/mine/numzeros", methods=["GET"])
+def give_number_of_zeros():
+    return str(crypto.num_of_zeros), 200
 
 
 @app.route("/api/chain", methods=["GET"])
