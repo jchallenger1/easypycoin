@@ -161,13 +161,10 @@ def get_transactions():
 def mine():
     if request.method == "GET":
         blockchain.create_block()
-        b = blockchain.minable_blocks[0]
-        print("Hash BEF:" + b.hash(False))
-        print("Hash BEFw/t: " + b.hash(True))
-        b.proof_of_work = 100
-        print("Hash AFT: " + b.hash())
         return json.dumps(
-            {"blocks": [block.get_mining_input() for block in blockchain.minable_blocks]},
+            {"blocks": [{"uuid": block.uuid,
+                         "block": block.get_mining_input()}
+                        for block in blockchain.minable_blocks]},
             default=crypto.serializer
         ), 200
 
@@ -188,7 +185,7 @@ def mine():
         return error_find_block_msg, 400
 
     # Try this proof of work the miner sent and see if this works
-    error_proof_msg = block.check_proof_of_work(proof_of_work)
+    error_proof_msg = block.check_proof_of_work(proof_of_work, miner_public_key)
 
     if error_proof_msg:
         return error_proof_msg, 400
@@ -199,7 +196,10 @@ def mine():
         return move_error, 400
 
     # Lastly, reward the miner!
-
+    # This is actually implicit, since the block is in the chain, the coinbase logged the user of mining that block,
+    # Thus from the server's standpoint they been rewarded crypto.block_mining_reward
+    # for their address simply being there.
+    return f"Miner received {crypto.block_mining_reward} coins", 200
 
 
 @app.route("/api/chain", methods=["GET"])

@@ -17,6 +17,8 @@ The public key is the address of the user
 
 # The number of zeros the blockchain will search for on a sha256 hash for a proof of work
 num_of_zeros = 3
+block_mining_reward = 20
+
 
 class Transaction:
     # Creates a transaction object, where
@@ -86,12 +88,18 @@ class Block:
         self.proof_of_work = 0
         self.previous_block_hash = previous_block_hash
         self.uuid = uuid.uuid4()
+        self.miner_key = None  # The key of the person who mined this block
 
-    def get_mining_input(self, include_proof_of_work=False) -> str:
-        return str(base64.b64encode(self.to_bytes(include_proof_of_work)), "utf-8")
+    def get_mining_input(self) -> str:
+        return str(base64.b64encode(self.to_bytes()), "utf-8")
 
-    def to_bytes(self, include_proof_of_work=False) -> bytes:
+    # Gets this current block to bytes
+    # proof of work is optional as the miner is expected to create the proof of work
+    # miner key is optional as the miner is expected to provide their miner key
+    def to_bytes(self, include_proof_of_work=False, include_miner_key=False) -> bytes:
         mining_bytes = bytearray()
+        if include_miner_key:
+            mining_bytes += str(self.miner_key).encode("ascii")
         for transaction in self.transactions:
             mining_bytes += str(transaction).encode("ascii")
         mining_bytes += bytes.fromhex(self.previous_block_hash)
@@ -100,17 +108,19 @@ class Block:
             mining_bytes += str(self.proof_of_work).encode("ascii")
         return mining_bytes
 
-    def hash(self, include_proof_of_work=True) -> str:
-        return hashlib.sha256(self.to_bytes(include_proof_of_work)).hexdigest()
+    def hash(self, include_proof_of_work=True, include_miner_key=False) -> str:
+        return hashlib.sha256(self.to_bytes(include_proof_of_work, include_miner_key)).hexdigest()
 
-    def check_proof_of_work(self, other_proof: int) -> str:
+    def check_proof_of_work(self, other_proof: int, miner_public_key: str) -> str:
         previous_proof = self.proof_of_work
         self.proof_of_work = other_proof
-        block_hash = self.hash()
+        self.miner_key = miner_public_key
+        block_hash = self.hash(include_proof_of_work=True, include_miner_key=True)
         start_num_zeros = '0' * num_of_zeros
 
         if not block_hash.startswith(start_num_zeros):
             self.proof_of_work = previous_proof
+            self.miner_key = None
             return f"Proof of work {other_proof} gave SHA256 {block_hash} which does not start with {start_num_zeros}"
         return ""
 
@@ -173,7 +183,7 @@ class BlockChain:
         self.transactions.append(transaction)
         pass
 
-    def find_mine_block(self, block_uuid : uuid) -> Union[Tuple[str, Block], Tuple[str, None]]:
+    def find_mine_block(self, block_uuid: uuid) -> Union[Tuple[str, Block], Tuple[str, None]]:
         # First find the block the user is trying to mine
         found_block = None
         # Look in minable blocks
@@ -194,7 +204,7 @@ class BlockChain:
 
         return "", found_block
 
-    def move_minable_block(self, block : Block):
+    def move_minable_block(self, block: Block):
         try:
             self.minable_blocks.remove(block)
         except ValueError as e:

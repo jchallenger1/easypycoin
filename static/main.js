@@ -1,6 +1,6 @@
 const hostname = "http://127.0.0.1:5000"
 
-let currentStoredTransactionUUIDs = []
+let textEncoder = new TextEncoder()
 
 // Function creates an HTML string of an alert message. The messageType dictates the coloring of said message
 function createHTMLAlertMessage(message, messageType = "danger") {
@@ -124,7 +124,7 @@ function refreshTransactions() {
     $.getJSON(`${hostname}/api/transactions`, (json) => {
         let table =$("#view-trans-table")
         table.empty()
-        currentStoredTransactionUUIDs = [];
+        let currentStoredTransactionUUIDs = [];
         for (const transaction of json) {
             currentStoredTransactionUUIDs.push(transaction["uuid"]);
             table.append(createHTMLTableStr(transaction,
@@ -142,10 +142,6 @@ function textToClipboard(text) {
     dummy.select();
     document.execCommand("copy");
     document.body.removeChild(dummy);
-}
-
-function promiseMine() {
-
 }
 
 $(document).ready(function () {
@@ -197,15 +193,46 @@ $(document).ready(function () {
     $("#mine-btn").on("click", function () {
 
         $.get(`${hostname}/api/mine`, (data) => {
-            let d = JSON.parse(data)
-            let base64block = JSON.parse(data)["blocks"][0]
+            let json_data = JSON.parse(data)
+            console.log(json_data)
+            let base64block = json_data["blocks"][0]["block"];
+            let blockUUID = json_data["blocks"][0]["uuid"];
 
-            //const blob = b64toBlob(base64block)
-            const array = _base64ToArrayBuffer(base64block)
-            console.log(sha256(array))
-            let newf = appendArrayBuffers(array, new TextEncoder().encode("100"));
-            console.log(sha256(newf))
-            //blob.arrayBuffer().then(buffer => console.log("BLOB: " + sha256(buffer)));
+            const miner_public_key = $("#miner-public-key").val();
+            let block = _base64ToArrayBuffer(base64block)
+            const miningBlock = appendArrayBuffers(textEncoder.encode(miner_public_key), block)
+
+            let proof_of_work = 0;
+            for (let i = 0; i !== Number.MAX_VALUE / 100; ++i) {
+                let hashblock = appendArrayBuffers(miningBlock, textEncoder.encode(i.toString()));
+                if (sha256(hashblock).startsWith("000")) {
+                    proof_of_work = i;
+                    break;
+                }
+            }
+
+            let jsonPostData = JSON.stringify({
+                            "proof_of_work": proof_of_work.toString(),
+                            "uuid": blockUUID,
+                            "miner_public_key": miner_public_key});
+            console.log(jsonPostData);
+            $.ajax({
+                url: `${hostname}/api/mine`,
+                type: "POST",
+                data:jsonPostData,
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (data) {
+                    console.log("ok")
+                },
+                error: function (data) {
+                    let errorMessage = `An error has occurred attempting to mine<br>
+                                        The server returned status ${data["statusText"]}(${data["status"]}),<br>
+                                        with message: "${data["responseText"]}"
+                                        `
+                    $("#messages").append(createHTMLAlertMessage(errorMessage));
+                }
+            })
         });
     });
 });
