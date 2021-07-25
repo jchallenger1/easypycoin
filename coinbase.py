@@ -193,13 +193,13 @@ def mine():
     # Checks out, now we need to add the transaction to the blockchain and remove it from minable block
     move_error = blockchain.move_minable_block(block)
     if move_error:
-        return move_error, 400
+        return move_error, 500
 
     # Lastly, reward the miner!
     # This is actually implicit, since the block is in the chain, the coinbase logged the user of mining that block,
     # Thus from the server's standpoint they been rewarded crypto.block_mining_reward
     # for their address simply being there.
-    return f"Miner received {crypto.block_mining_reward} coins for {block_uuid}", 200
+    return f"Miner received {crypto.block_mining_reward} coins for Block UUID {block_uuid}", 200
 
 
 @app.route("/api/mine/numzeros", methods=["GET"])

@@ -200,50 +200,84 @@ $(document).ready(function () {
 
         $.get(`${hostname}/api/mine`, (data) => {
             let json_data = JSON.parse(data)
-            let base64block = json_data["blocks"][0]["block"];
-            let blockUUID = json_data["blocks"][0]["uuid"];
-
-            const miner_public_key = $("#miner-public-key").val();
-            let block = _base64ToArrayBuffer(base64block)
-            const miningBlock = appendArrayBuffers(textEncoder.encode(miner_public_key), block)
-
-            let proof_of_work = 0;
-            for (let i = 0; i !== Number.MAX_VALUE / 100; ++i) {
-                let hashblock = appendArrayBuffers(miningBlock, textEncoder.encode(i.toString()));
-                if (sha256(hashblock).startsWith('0'.repeat(numZerosMining))) {
-                    proof_of_work = i;
-                    break;
-                }
+            // no blocks to use
+            if (_.isEmpty(json_data["blocks"])) {
+                $("#messages").append(createHTMLAlertMessage("There are no available blocks to mine"));
+                return;
             }
 
-            let jsonPostData = JSON.stringify({
-                            "proof_of_work": proof_of_work.toString(),
-                            "uuid": blockUUID,
-                            "miner_public_key": miner_public_key});
+            // Set the mining status
+            $("#mine-status").html(`Mining (0/${json_data["blocks"].length}) blocks`);
 
-            $.ajax({
-                url: `${hostname}/api/mine`,
-                type: "POST",
-                data:jsonPostData,
-                contentType: "application/json; charset=utf-8",
-                dataType: "text",
-                success: function (data) {
-                    $("#messages").append(createHTMLAlertMessage(data, "success"));
-                },
-                error: function () {
-                    let errorMessage = `An error has occurred attempting to mine<br>
-                                        The server returned status ${data["statusText"]}(${data["status"]}),<br>
-                                        with message: "${data["responseText"]}"
-                                        `
-                    $("#messages").append(createHTMLAlertMessage(errorMessage));
-                }
-            })
+            let promises = []
+            const miner_key = $("#miner-public-key").val();
+            let doneBlocks = 0;
+
+            // When we are done mining a block we update the status
+            let mineThen = () => {
+                ++doneBlocks;
+                $("#mine-status").html(`Mining (${doneBlocks}/${json_data["blocks"].length}) blocks`);
+            };
+
+            // Mine each block async, for each block we keep a promise to it
+            for (let i = 0; i !== json_data["blocks"].length; ++i)
+                promises.push(mineBlock(json_data["blocks"][i], miner_key).then(mineThen));
+
+            // When all blocks are done mining, put the status back to not mining.
+            Promise.all(promises).then(() => {
+                $("#mine-status").html("Not mining");
+            });
+
         });
     });
 });
 
+// Mines a block by finding the proof of work and sending the result to the server
+// base64block is a base64 string encoded in utf-8
+// blockuuid is a string representing the block of the uuid
+// miner_public_key is a string of the miner's key that the user entered in the html page
+async function mineBlock(jsonblock, miner_public_key) {
+    let block = _base64ToArrayBuffer(jsonblock["block"]);
+    let blockUUID = jsonblock["uuid"];
+
+    const miningBlock = appendArrayBuffers(textEncoder.encode(miner_public_key), block);
+
+    let proof_of_work = 0;
+    for (let i = 0; i !== Number.MAX_VALUE / 100; ++i) {
+        let hashBlock = appendArrayBuffers(miningBlock, textEncoder.encode(i.toString()));
+        if (sha256(hashBlock).startsWith('0'.repeat(numZerosMining))) {
+            proof_of_work = i;
+            break;
+        }
+    }
+
+    const jsonPostData = JSON.stringify({
+                            "proof_of_work": proof_of_work.toString(),
+                            "uuid": blockUUID,
+                            "miner_public_key": miner_public_key});
+
+    $.ajax({
+        url: `${hostname}/api/mine`,
+        type: "POST",
+        data:jsonPostData,
+        contentType: "application/json; charset=utf-8",
+        dataType: "text",
+        success: function (data) {
+            $("#messages").append(createHTMLAlertMessage(data, "success"));
+        },
+        error: function (data) {
+            let errorMessage = `An error has occurred attempting to mine<br>
+                                The server returned status ${data["statusText"]}(${data["status"]}),<br>
+                                with message: "${data["responseText"]}"
+                                `
+            $("#messages").append(createHTMLAlertMessage(errorMessage));
+        }
+    });
+
+}
 
 // https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer
+// Function turns a base 64 string into an arraybuffer
 function _base64ToArrayBuffer(base64str) {
     let binary_string = atob(base64str);
     let len = binary_string.length;
@@ -256,6 +290,7 @@ function _base64ToArrayBuffer(base64str) {
 
 
 // https://gist.github.com/72lions/4528834
+// Function takes two arraybuffers and combines them together f(bf1, bf2) -> bf1|bf2
 function appendArrayBuffers(buffer1, buffer2) {
   let tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
   tmp.set(new Uint8Array(buffer1), 0);

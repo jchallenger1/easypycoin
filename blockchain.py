@@ -207,6 +207,8 @@ class BlockChain:
     def move_minable_block(self, block: Block):
         try:
             self.minable_blocks.remove(block)
+            for transaction in block.transactions:
+                self.transactions.remove(transaction)
         except ValueError as e:
             return f"Failure trying to remove block {block.uuid}, {str(e)}"
         self.chain.append(block)
