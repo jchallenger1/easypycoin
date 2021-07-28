@@ -1,7 +1,17 @@
 const hostname = "http://127.0.0.1:5000"
 
-let textEncoder = new TextEncoder()
-let numZerosMining = 0;
+class MiningStats {
+    constructor() {
+        this.minedBlocks = 0;
+        this.miningAttempts = 0;
+    }
+}
+
+let textEncoder = new TextEncoder() // Common text encoder for encoding strings
+let numZerosMining = 0; // The number of zeros the server requires for the start of a hash's block
+let miningStats = new MiningStats()
+
+
 
 // Function creates an HTML string of an alert message. The messageType dictates the coloring of said message
 function createHTMLAlertMessage(message, messageType = "danger") {
@@ -121,13 +131,11 @@ function createHTMLTableStr(transaction, keyObjects) {
     return text + `</tr>`;
 }
 
-function refreshTransactions() {
+async function refreshTransactions() {
     $.getJSON(`${hostname}/api/transactions`, (json) => {
         let table =$("#view-trans-table")
         table.empty()
-        let currentStoredTransactionUUIDs = [];
         for (const transaction of json) {
-            currentStoredTransactionUUIDs.push(transaction["uuid"]);
             table.append(createHTMLTableStr(transaction,
                 ["uuid", "sender_public_key", "recipient_public_key", "amount"]));
         }
@@ -196,41 +204,39 @@ $(document).ready(function () {
         $("#uuidv4-mktrans-form").val(uuidv4());
     });
 
-    $("#mine-btn").on("click", function () {
-
-        $.get(`${hostname}/api/mine`, (data) => {
-            let json_data = JSON.parse(data)
-            // no blocks to use
-            if (_.isEmpty(json_data["blocks"])) {
-                $("#messages").append(createHTMLAlertMessage("There are no available blocks to mine"));
-                return;
-            }
-
-            // Set the mining status
-            $("#mine-status").html(`Mining (0/${json_data["blocks"].length}) blocks`);
-
-            let promises = []
-            const miner_key = $("#miner-public-key").val();
-            let doneBlocks = 0;
-
-            // When we are done mining a block we update the status
-            let mineThen = () => {
-                ++doneBlocks;
-                $("#mine-status").html(`Mining (${doneBlocks}/${json_data["blocks"].length}) blocks`);
-            };
-
-            // Mine each block async, for each block we keep a promise to it
-            for (let i = 0; i !== json_data["blocks"].length; ++i)
-                promises.push(mineBlock(json_data["blocks"][i], miner_key).then(mineThen));
-
-            // When all blocks are done mining, put the status back to not mining.
-            Promise.all(promises).then(() => {
-                $("#mine-status").html("Not mining");
-            });
-
-        });
+    $("#mine-btn").on("click", () => {
+        $("#mine-status").html(`Mined 0 blocks`);
+        miningStats = new MiningStats();
+        mine();
     });
 });
+
+async function mine() {
+    let mineAttempts = 0;
+
+    $.get(`${hostname}/api/mine`, (data) => {
+        let json_data = JSON.parse(data)
+        // no blocks to use
+        if (_.isEmpty(json_data["blocks"])) {
+            if (mineAttempts === 0)
+                $("#messages").append(createHTMLAlertMessage("There are no available blocks to mine"));
+            return;
+        }
+
+        const miner_key = $("#miner-public-key").val();
+
+        // There is no point mining each block async because as soon as one is finished, all the others we have are invalid,
+        // so instead just choose one random one and focus on it
+        let numBlocks = json_data["blocks"].length
+        mineBlock(json_data["blocks"][_.random(0, numBlocks - 1)], miner_key).then(() => {
+            refreshTransactions()
+            ++mineAttempts
+            mine();
+        });
+
+    });
+}
+
 
 // Mines a block by finding the proof of work and sending the result to the server
 // base64block is a base64 string encoded in utf-8
@@ -249,6 +255,7 @@ async function mineBlock(jsonblock, miner_public_key) {
             proof_of_work = i;
             break;
         }
+
     }
 
     const jsonPostData = JSON.stringify({
@@ -263,9 +270,21 @@ async function mineBlock(jsonblock, miner_public_key) {
         contentType: "application/json; charset=utf-8",
         dataType: "text",
         success: function (data) {
+            // update mining stats
+            ++miningStats.miningAttempts;
+            ++miningStats.minedBlocks;
+
+            // Set the mining status
+            $("#mine-status").html(`Successfully Mined ${miningStats.minedBlocks}/${miningStats.miningAttempts} block attempts`);
+
             $("#messages").append(createHTMLAlertMessage(data, "success"));
         },
         error: function (data) {
+            ++miningStats.miningAttempts;
+
+            // Set the mining status
+            $("#mine-status").html(`Successfully Mined ${miningStats.minedBlocks}/${miningStats.miningAttempts} block attempts`);
+
             let errorMessage = `An error has occurred attempting to mine<br>
                                 The server returned status ${data["statusText"]}(${data["status"]}),<br>
                                 with message: "${data["responseText"]}"

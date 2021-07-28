@@ -16,7 +16,7 @@ The public key is the address of the user
 """
 
 # The number of zeros the blockchain will search for on a sha256 hash for a proof of work
-num_of_zeros = 3
+num_of_zeros = 4
 block_mining_reward = 20
 
 
@@ -150,34 +150,39 @@ class BlockChain:
         self.transactions = []
         self.minable_blocks = []
         self.chain = [Block.genesis_block()]
+        self.used_block_uuids = set()
         self.nodes = set()
         self.node_uuid = uuid.uuid4()
+        self.create_new_mining_blocks = True
 
     max_transactions_const = 3
 
-    def create_block(self):
+    def create_mining_blocks(self) -> None:
+        # TODO: Allow for blocks to be added while mining is occuring - low priority
+
+        if not self.create_new_mining_blocks:
+            print("Flag indicates not to make any new blocks")
+            return None
+
         if len(self.transactions) < 1:
             print("Not enough transactions to make a block")
             return None
 
-        # Get the max amount of transactions that can fit on the block that are not already in other minable blocks
-        # First find the transactions currently being mined
-        transactions_currently_mining = []
-        for block in self.minable_blocks:
-            transactions_currently_mining.extend(block.transactions)
-
-        max_transactions = self.transactions[:BlockChain.max_transactions_const]
-        transactions = []
-        # now check
-        for transaction in max_transactions:
-            if transaction not in transactions_currently_mining:
-                transactions.append(transaction)
-
+        # Create all new mining blocks
         prev_block_hash = self.chain[-1].hash()
-        new_block = Block(transactions, prev_block_hash)
 
-        self.minable_blocks.append(new_block)
-        return new_block
+        # partition transactions into n sized arrays to put into each block
+        for i in range(0, len(self.transactions), BlockChain.max_transactions_const):
+            transaction_blocks = self.transactions[i:i + BlockChain.max_transactions_const]
+            block = Block(transaction_blocks, prev_block_hash)
+            self.minable_blocks.append(block)
+            self.used_block_uuids.add(block.uuid)
+
+        self.create_new_mining_blocks = False
+
+    def clear_mining_blocks(self):
+        self.minable_blocks.clear()
+        self.create_new_mining_blocks = True
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
@@ -192,15 +197,25 @@ class BlockChain:
                 found_block = block
                 break
 
-        # Block wasn't find, either it was already mined, or it doesn't exist
+        # Block was not found
         if found_block is None:
+
+            # Check if it's already in the blockchain
             block_already_minded = False
             for block in self.chain:
                 if block.uuid == block_uuid:
                     block_already_minded = True
                     break
-            return ("This block has already been mined" if block_already_minded
-                    else f"This block with uuid {block_uuid} does not exist!"), None
+            if block_already_minded:
+                return "This block has already been mined and is in the blockchain", None
+
+            # Check if it's an invalid block by someone else mining a different one, thus this block has an incorrect
+            # previous hash
+            if block_uuid in self.used_block_uuids:
+                return "This block is no longer valid due to a blockchain addition", None
+
+            # Block didn't exist
+            return f"This block with uuid {block_uuid} does not exist!", None
 
         return "", found_block
 

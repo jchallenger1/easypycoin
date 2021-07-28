@@ -160,7 +160,7 @@ def get_transactions():
 @app.route("/api/mine", methods=["GET", "POST"])
 def mine():
     if request.method == "GET":
-        blockchain.create_block()
+        blockchain.create_mining_blocks()
         return json.dumps(
             {"blocks": [{"uuid": block.uuid,
                          "block": block.get_mining_input()}
@@ -194,6 +194,9 @@ def mine():
     move_error = blockchain.move_minable_block(block)
     if move_error:
         return move_error, 500
+
+    # We have to regenerate the mining blocks now, the previous block hash is now this one
+    blockchain.clear_mining_blocks()
 
     # Lastly, reward the miner!
     # This is actually implicit, since the block is in the chain, the coinbase logged the user of mining that block,
