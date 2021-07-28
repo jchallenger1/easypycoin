@@ -1,6 +1,7 @@
+import base64
 import binascii
 import uuid
-from datetime import datetime
+from typing import List, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -14,18 +15,21 @@ Class to represent a transaction inside a block
 The public key is the address of the user
 """
 
+# The number of zeros the blockchain will search for on a sha256 hash for a proof of work
+num_of_zeros = 4
+block_mining_reward = 20
+
 
 class Transaction:
     # Creates a transaction object, where
     # keys are of type cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey(/RSAPublicKey)
     # amount = floating point
-    def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount):
+    def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount, uuid):
         self.sender_public_key = sender_public_key
         self.sender_private_key = sender_private_key
         self.recipient_public_key = recipient_public_key
         self.amount = amount
-        self.timestamp = datetime.now()
-        self.uuid = uuid.uuid4()
+        self.uuid = uuid
         self.signature = ""
 
     # Function returns a dictionary of this transaction, without the private key
@@ -34,8 +38,7 @@ class Transaction:
             "sender_public_key": self.sender_public_key,
             "recipient_public_key": self.recipient_public_key,
             "amount": self.amount,
-            # "timestamp": self.timestamp,
-            # "uuid": self.uuid
+            "uuid": self.uuid
         }
 
     def to_ascii_dict(self) -> dict:
@@ -45,8 +48,7 @@ class Transaction:
             "recipient_public_key": binary_to_ascii(
                 self.recipient_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
             "amount": self.amount,
-            # "timestamp": self.timestamp,
-            # "uuid": self.uuid
+            "uuid": str(self.uuid)
         }
 
     # Function converts this object to a string, without the private key
@@ -81,44 +83,150 @@ class Transaction:
 
 
 class Block:
-    def __init__(self, transactions, previous_block_hash):
+    def __init__(self, transactions: List[Transaction], previous_block_hash: str):
         self.transactions = transactions
         self.proof_of_work = 0
         self.previous_block_hash = previous_block_hash
+        self.uuid = uuid.uuid4()
+        self.miner_key = None  # The key of the person who mined this block
 
-    def hash(self) -> bytes:
-        hash_creator = hashlib.sha256()
+    def get_mining_input(self) -> str:
+        return str(base64.b64encode(self.to_bytes()), "utf-8")
+
+    # Gets this current block to bytes
+    # proof of work is optional as the miner is expected to create the proof of work
+    # miner key is optional as the miner is expected to provide their miner key
+    def to_bytes(self, include_proof_of_work=False, include_miner_key=False) -> bytes:
+        mining_bytes = bytearray()
+        if include_miner_key:
+            mining_bytes += str(self.miner_key).encode("ascii")
         for transaction in self.transactions:
-            hash_creator.update(str(transaction).encode("ascii"))
-        hash_creator.update(self.previous_block_hash)
-        hash_creator.update(self.proof_of_work)
-        return hash_creator.digest()
+            mining_bytes += str(transaction).encode("ascii")
+        mining_bytes += bytes.fromhex(self.previous_block_hash)
+        mining_bytes += str(self.uuid).encode("ascii")
+        if include_proof_of_work:
+            mining_bytes += str(self.proof_of_work).encode("ascii")
+        return mining_bytes
+
+    def hash(self, include_proof_of_work=True, include_miner_key=False) -> str:
+        return hashlib.sha256(self.to_bytes(include_proof_of_work, include_miner_key)).hexdigest()
+
+    def check_proof_of_work(self, other_proof: int, miner_public_key: str) -> str:
+        previous_proof = self.proof_of_work
+        self.proof_of_work = other_proof
+        self.miner_key = miner_public_key
+        block_hash = self.hash(include_proof_of_work=True, include_miner_key=True)
+        start_num_zeros = '0' * num_of_zeros
+
+        if not block_hash.startswith(start_num_zeros):
+            self.proof_of_work = previous_proof
+            self.miner_key = None
+            return f"Proof of work {other_proof} gave SHA256 {block_hash} which does not start with {start_num_zeros}"
+        return ""
 
     def is_valid(self) -> bool:
         return all(transaction.is_valid() for transaction in self.transactions)
+
+    # Function converts this object to a string, without the private key
+    def __str__(self) -> str:
+        return str(dict(self))
+
+    # For str()
+    def __iter__(self):
+        yield "uuid", str(self.uuid)
+        yield "transactions", [trans.to_ascii_dict() for trans in self.transactions]
+        yield "previous_block_hash", self.previous_block_hash
+        yield "proof_of_work", self.proof_of_work
+
+    @staticmethod
+    def genesis_block():
+        hash_creator = hashlib.sha256()
+        hash_creator.update(b"0")  # Value from constructor
+        return Block([], hash_creator.digest().hex())
 
 
 class BlockChain:
     def __init__(self):
         self.transactions = []
-        self.chain = [Block([], 0)]
+        self.minable_blocks = []
+        self.chain = [Block.genesis_block()]
+        self.used_block_uuids = set()
         self.nodes = set()
         self.node_uuid = uuid.uuid4()
+        self.create_new_mining_blocks = True
 
     max_transactions_const = 3
 
-    def create_block(self):
+    def create_mining_blocks(self) -> None:
+        # TODO: Allow for blocks to be added while mining is occuring - low priority
+
+        if not self.create_new_mining_blocks:
+            print("Flag indicates not to make any new blocks")
+            return None
+
         if len(self.transactions) < 1:
             print("Not enough transactions to make a block")
             return None
 
-        transactions = self.transactions[:BlockChain.max_transactions_const]
+        # Create all new mining blocks
         prev_block_hash = self.chain[-1].hash()
-        return Block(transactions, prev_block_hash)
+
+        # partition transactions into n sized arrays to put into each block
+        for i in range(0, len(self.transactions), BlockChain.max_transactions_const):
+            transaction_blocks = self.transactions[i:i + BlockChain.max_transactions_const]
+            block = Block(transaction_blocks, prev_block_hash)
+            self.minable_blocks.append(block)
+            self.used_block_uuids.add(block.uuid)
+
+        self.create_new_mining_blocks = False
+
+    def clear_mining_blocks(self):
+        self.minable_blocks.clear()
+        self.create_new_mining_blocks = True
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
         pass
+
+    def find_mine_block(self, block_uuid: uuid) -> Union[Tuple[str, Block], Tuple[str, None]]:
+        # First find the block the user is trying to mine
+        found_block = None
+        # Look in minable blocks
+        for block in self.minable_blocks:
+            if block.uuid == block_uuid:
+                found_block = block
+                break
+
+        # Block was not found
+        if found_block is None:
+
+            # Check if it's already in the blockchain
+            block_already_minded = False
+            for block in self.chain:
+                if block.uuid == block_uuid:
+                    block_already_minded = True
+                    break
+            if block_already_minded:
+                return "This block has already been mined and is in the blockchain", None
+
+            # Check if it's an invalid block by someone else mining a different one, thus this block has an incorrect
+            # previous hash
+            if block_uuid in self.used_block_uuids:
+                return "This block is no longer valid due to a blockchain addition", None
+
+            # Block didn't exist
+            return f"This block with uuid {block_uuid} does not exist!", None
+
+        return "", found_block
+
+    def move_minable_block(self, block: Block):
+        try:
+            self.minable_blocks.remove(block)
+            for transaction in block.transactions:
+                self.transactions.remove(transaction)
+        except ValueError as e:
+            return f"Failure trying to remove block {block.uuid}, {str(e)}"
+        self.chain.append(block)
 
 
 class Wallet:
@@ -177,5 +285,8 @@ def ascii_key_to_private_key(ascii_key, password=None):
 def serializer(obj):
     if isinstance(obj, Transaction):
         return obj.to_ascii_dict()
-
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, Block):
+        return str(obj)
     return obj.__dict__

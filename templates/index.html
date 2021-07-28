@@ -3,7 +3,6 @@
 
 <head>
     <title>Easypycoin</title>
-
     <!-- No favicon.ico requests -->
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
 
@@ -11,6 +10,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-umd-min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uuid@latest/dist/umd/uuidv4.min.js"></script> <!-- UUID 4 -->
+    <script src="https://cdn.jsdelivr.net/gh/emn178/js-sha256/build/sha256.min.js"></script> <!-- SHA256 -->
     <!-- JavaScript Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
@@ -103,6 +104,16 @@
                     <label for="amount-mktrans" class="col-sm-2 col-form-label">Amount:</label>
                     <input type="text" id="amount-mktrans" placeholder="0">
                 </div>
+                <div class="form-group row p-3 col-auto">
+                    <label for="uuidv4-mktrans-form" class="col-sm-2 col-form-label">UUIDV4</label>
+                    <input type="text" id="uuidv4-mktrans-form" size="36">
+                    <button type="button" class="btn btn-primary" id="refresh-uuidv4-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
+                            <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
+                            <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
+                        </svg>
+                    </button>
+                </div>
                 <div class="form-group row p-3">
                     <label for="signature-mktrans" class="col-sm-2 col-form-label">Transaction Signature:</label>
                     <textarea class="form-control col-sm-6" id="signature-mktrans"></textarea>
@@ -117,14 +128,14 @@
         <!-- View and Mine Transactions Tab -->
         <div class="tab-pane fade" id="view-trans" role="tabpanel" aria-labelledby="view-trans-tab">
             <h2 class="text-center">View and Mine Transactions</h2>
-            <div>
+            <div class="mb-4">
                 <button type="button" class="btn btn-outline-primary btn-large" id="refresh-trans-button">Refresh Transactions</button>
-                <p class="small">Refresh is done every 10 seconds</p>
             </div>
             <div class="container-fluid table-responsive">
                 <table class="table table-striped table-primary" id="transaction-table">
                     <thead>
                         <tr>
+                            <th scope="col">UUID</th>
                             <th scope="col">Sender Public Key</th>
                             <th scope="col">Recipient Public Key</th>
                             <th scope="col">Amount</th>
@@ -136,6 +147,31 @@
                     </tbody>
                 </table>
             </div>
+            <div class="form-group row p-3">
+                <label for="miner-public-key" class="col-sm-2 col-form-label">Miner's Public Key</label>
+                <textarea class="form-control col-sm-6" id="miner-public-key"></textarea>
+            </div>
+            <div class="container-fluid text-center">
+                <button class="btn btn-outline-primary btn-large p-2" id="mine-btn">Mine Transactions</button>
+            </div>
+            <div class="alert alert-primary text-center container mt-5" >
+                <div>
+                    Status: <b id="mine-status">Not mining</b>
+                </div>
+                <div><button class="btn btn-outline-primary" id="clear-mining-table-btn">Clear Mined Blocks Table</button></div>
+            </div>
+            <div class="container">
+                <table class="table table-striped table-primary">
+                    <thead>
+                        <tr>
+                            <th scope="col">Block UUID</th>
+                            <th scope="col">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mining-table"></tbody>
+                </table>
+
+            </div>
         </div>
 
         <!-- Blockchain Tab -->
@@ -143,7 +179,6 @@
             <h2 class="text-center">View Blocks from Blockchain</h2>
             <div>
                 <button type="button" class="btn btn-outline-primary btn-large">Refresh Transactions</button>
-                <p class="small">Refresh is done every 10 seconds</p>
             </div>
             <div class="container-fluid table-responsive">
                 <table class="table table-striped table-primary">
