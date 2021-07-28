@@ -1,3 +1,7 @@
 #uuidv4-mktrans-form {
     margin-right: 25px
 }
+
+td {
+    word-wrap: break-word
+}

@@ -131,9 +131,9 @@ function createHTMLTableStr(transaction, keyObjects) {
     return text + `</tr>`;
 }
 
-async function refreshTransactions() {
+function refreshTransactions() {
     $.getJSON(`${hostname}/api/transactions`, (json) => {
-        let table =$("#view-trans-table")
+        let table = $("#view-trans-table")
         table.empty()
         for (const transaction of json) {
             table.append(createHTMLTableStr(transaction,
@@ -209,17 +209,32 @@ $(document).ready(function () {
         miningStats = new MiningStats();
         mine();
     });
+    $("#clear-mining-table-btn").on("click", () => {
+        $("#mining-table tr").remove();
+    });
+
 });
 
-async function mine() {
-    let mineAttempts = 0;
+function mine() {
 
     $.get(`${hostname}/api/mine`, (data) => {
         let json_data = JSON.parse(data)
         // no blocks to use
         if (_.isEmpty(json_data["blocks"])) {
-            if (mineAttempts === 0)
+            let status = $("#mine-status");
+
+            // No blocks to use, first time the user even clicked this button
+            if (miningStats.miningAttempts === 0) {
                 $("#messages").append(createHTMLAlertMessage("There are no available blocks to mine"));
+                status.html("Not mining");
+            }
+            else { // No blocks to use while we are mining, switch after a few seconds
+                setTimeout(() => {
+                    if (miningStats.miningAttempts !== 0)
+                        status.html("Not mining");
+                }, 5000);
+            }
+
             return;
         }
 
@@ -230,7 +245,6 @@ async function mine() {
         let numBlocks = json_data["blocks"].length
         mineBlock(json_data["blocks"][_.random(0, numBlocks - 1)], miner_key).then(() => {
             refreshTransactions()
-            ++mineAttempts
             mine();
         });
 
@@ -243,11 +257,13 @@ async function mine() {
 // blockuuid is a string representing the block of the uuid
 // miner_public_key is a string of the miner's key that the user entered in the html page
 async function mineBlock(jsonblock, miner_public_key) {
+    // The Final mining block is [miner's key] + [server's block] + [nonce]
     let block = _base64ToArrayBuffer(jsonblock["block"]);
     let blockUUID = jsonblock["uuid"];
 
     const miningBlock = appendArrayBuffers(textEncoder.encode(miner_public_key), block);
 
+    // Need to now find the correct nonce to get the correct hash with n amount of initial zeros
     let proof_of_work = 0;
     for (let i = 0; i !== Number.MAX_VALUE / 100; ++i) {
         let hashBlock = appendArrayBuffers(miningBlock, textEncoder.encode(i.toString()));
@@ -258,10 +274,20 @@ async function mineBlock(jsonblock, miner_public_key) {
 
     }
 
+    // Found it, now send it to the server
     const jsonPostData = JSON.stringify({
                             "proof_of_work": proof_of_work.toString(),
                             "uuid": blockUUID,
                             "miner_public_key": miner_public_key});
+
+    // Function adds a new row to the mining table with the result of this block
+    const addToMiningTable = (rowType, message) => {
+        $("#mining-table").append(
+            `<tr class="${rowType}">
+                <th>${blockUUID}</th>
+                <th>${message}</th>
+            </tr>`)
+    }
 
     $.ajax({
         url: `${hostname}/api/mine`,
@@ -276,20 +302,13 @@ async function mineBlock(jsonblock, miner_public_key) {
 
             // Set the mining status
             $("#mine-status").html(`Successfully Mined ${miningStats.minedBlocks}/${miningStats.miningAttempts} block attempts`);
-
-            $("#messages").append(createHTMLAlertMessage(data, "success"));
+            addToMiningTable("table-success", data);
         },
         error: function (data) {
             ++miningStats.miningAttempts;
 
-            // Set the mining status
             $("#mine-status").html(`Successfully Mined ${miningStats.minedBlocks}/${miningStats.miningAttempts} block attempts`);
-
-            let errorMessage = `An error has occurred attempting to mine<br>
-                                The server returned status ${data["statusText"]}(${data["status"]}),<br>
-                                with message: "${data["responseText"]}"
-                                `
-            $("#messages").append(createHTMLAlertMessage(errorMessage));
+            addToMiningTable("table-warning", data);
         }
     });
 
