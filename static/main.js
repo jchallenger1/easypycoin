@@ -9,11 +9,14 @@ class MiningStats {
 
 let textEncoder = new TextEncoder() // Common text encoder for encoding strings
 let numZerosMining = 0; // The number of zeros the server requires for the start of a hash's block
-let miningStats = new MiningStats()
+let miningStats = new MiningStats() // Simple global class to store indicators - for this mining indicators
 
 
+/*
+ * General Functions
+ */
 
-// Function creates an HTML string of an alert message. The messageType dictates the coloring of said message
+// Function creates an HTML string of an alert message. The messageType dictates the coloring of said message based on bootstrap
 function createHTMLAlertMessage(message, messageType = "danger") {
     let htmlMessage = document.createElement("div");
     htmlMessage.classList.add("alert", `alert-${messageType}`, "alert-dismissible", "fade", "show");
@@ -36,13 +39,7 @@ function createHTMLAlertMessage(message, messageType = "danger") {
     return htmlMessage;
 }
 
-function generateCryptoKeys() {
-    $.getJSON(`${hostname}/api/wallet`, (json) => {
-        $("#private-key-form-walgen").val(json["private_key"]);
-        $("#public-key-form-walgen").val(json["public_key"]);
-    });
-}
-
+// Gets all the fields from the transaction screen and puts them into a JSON string
 function getTransactionDataFieldsToJson() {
     return JSON.stringify({
         "sender_private_key": $("#private-key-form-mktrans").val(),
@@ -54,48 +51,6 @@ function getTransactionDataFieldsToJson() {
     });
 }
 
-function signTransaction() {
-    $.ajax({
-        url: `${hostname}/api/transaction/sign`,
-        type: "POST",
-        data: getTransactionDataFieldsToJson(),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        success: function (data) {
-            $("#signature-mktrans").val(data["signature"]);
-        },
-        error: function (data) {
-            let errorMessage = `An error has occurred attempting to sign this transaction<br>
-                            The server returned status ${data["statusText"]}(${data["status"]}),<br>
-                            with message: "${data["responseText"]}"
-                            `
-            $("#messages").append(createHTMLAlertMessage(errorMessage));
-        }
-    })
-}
-
-function broadcastTransaction() {
-    $.ajax({
-        url: `${hostname}/api/transaction`,
-        type: "POST",
-        data: getTransactionDataFieldsToJson(),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-        success: function () {
-            $("#messages").append(createHTMLAlertMessage("Your transaction was successfully broadcast to nodes",
-                "success"));
-            $("#signature-mktrans").val("");
-            $("#uuidv4-mktrans-form").val("");
-        },
-        error: function (data) {
-            let errorMessage = `An error has occurred attempting to broadcast this transaction<br>
-                            The server returned status ${data["statusText"]}(${data["status"]}),<br>
-                            with message: "${data["responseText"]}"
-                            `
-            $("#messages").append(createHTMLAlertMessage(errorMessage));
-        }
-    });
-}
 
 // Function trims a string and adds ... between if its over a certain length, returns original string if not over length
 function trimTableStr(trimStr) {
@@ -105,6 +60,7 @@ function trimTableStr(trimStr) {
 }
 
 // Function takes a transaction object and extracts all keys from keyObjects to form an HTML <tr> row
+// This is specific to the transaction table
 function createHTMLTableStr(transaction, keyObjects) {
 
     if (!_.every(keyObjects, (field) => {
@@ -131,17 +87,6 @@ function createHTMLTableStr(transaction, keyObjects) {
     return text + `</tr>`;
 }
 
-function refreshTransactions() {
-    $.getJSON(`${hostname}/api/transactions`, (json) => {
-        let table = $("#view-trans-table")
-        table.empty()
-        for (const transaction of json) {
-            table.append(createHTMLTableStr(transaction,
-                ["uuid", "sender_public_key", "recipient_public_key", "amount"]));
-        }
-    });
-}
-
 // Function copies text to the user's clipboard
 function textToClipboard(text) {
     // To copy, it requires a DOM element to use the copy command
@@ -153,73 +98,12 @@ function textToClipboard(text) {
     document.body.removeChild(dummy);
 }
 
-$(document).ready(function () {
-    // Get the number of zeros per hash
-    $.get(`${hostname}/api/mine/numzeros`, function(data) {
-       numZerosMining = parseInt(data);
-    });
-
-    // Allows navigation of the tabs
-    $(".nav li a").on("click", () => {
-        $(".nav li a").removeClass("active");
-        $(this).addClass("active");
-    });
-
-    // Allows the fading out of warnings when the close button is clicked
-    $(document).on("click", ".alert button", function () {
-        $(this).parent(".alert").alert("close");
-    });
-
-    // On View and managing transactions, when the copy button is clicked to copy that said row
-    $(document).on("click", ".tr-copy-btn", function () {
-        let tr = $(this).parent().parent();
-        // Create a dictionary and go through the row to populate the dictionary
-        let dict = {}
-        tr.children().each(function (index, element) {
-            element.getAttribute("data-key")
-            if (element.hasAttribute("data-key") && element.hasAttribute("data-value"))
-                dict[element.getAttribute("data-key")] = element.getAttribute("data-value");
-        });
-
-        textToClipboard(JSON.stringify(dict));
-
-        // Animate a "Copied!" message onto the button and return back to the original image
-        let This = this;
-        let previous = $(this).html();
-        $(this).text("Copied!")
-        setTimeout(function () {
-            $(This).html(previous);
-        }, 1000)
-    });
-
-    $("#gen-wallet-btn").on("click", generateCryptoKeys);
-
-    $("#sign-trans-btn").on("click", signTransaction);
-
-    $("#broadcast-trans-btn").on("click", broadcastTransaction);
-
-    $("#refresh-trans-button").on("click", refreshTransactions);
-
-    $("#refresh-uuidv4-btn").on("click", () => {
-        $("#uuidv4-mktrans-form").val(uuidv4());
-    });
-
-    $("#mine-btn").on("click", () => {
-        $("#mine-status").html(`Mined 0 blocks`);
-        miningStats = new MiningStats();
-        mine();
-    });
-    $("#clear-mining-table-btn").on("click", () => {
-        $("#mining-table tr").remove();
-    });
-
-});
-
+// Function calls the server repetitively to mine all blocks on the server whilst updating what was mined in the
+// mining table. miningStats must be set to miningStats = new MiningStats() for the first initial call to this function
 function mine() {
-
     $.get(`${hostname}/api/mine`, (data) => {
         let json_data = JSON.parse(data)
-        // no blocks to use
+        // no blocks to use, either way we stop.
         if (_.isEmpty(json_data["blocks"])) {
             let status = $("#mine-status");
 
@@ -228,7 +112,7 @@ function mine() {
                 $("#messages").append(createHTMLAlertMessage("There are no available blocks to mine"));
                 status.html("Not mining");
             }
-            else { // No blocks to use while we are mining, switch after a few seconds
+            else { // No blocks to use while we are mining, switch the text after a few seconds
                 setTimeout(() => {
                     if (miningStats.miningAttempts !== 0)
                         status.html("Not mining");
@@ -242,9 +126,10 @@ function mine() {
 
         // There is no point mining each block async because as soon as one is finished, all the others we have are invalid,
         // so instead just choose one random one and focus on it
-        let numBlocks = json_data["blocks"].length
+        let numBlocks = json_data["blocks"].length;
         mineBlock(json_data["blocks"][_.random(0, numBlocks - 1)], miner_key).then(() => {
-            refreshTransactions()
+            // done mining a block, refresh the transaction table and mine for another block
+            refreshTransactions();
             mine();
         });
 
@@ -265,9 +150,10 @@ async function mineBlock(jsonblock, miner_public_key) {
 
     // Need to now find the correct nonce to get the correct hash with n amount of initial zeros
     let proof_of_work = 0;
+    let proofZerosString = '0'.repeat(numZerosMining);
     for (let i = 0; i !== Number.MAX_VALUE / 100; ++i) {
         let hashBlock = appendArrayBuffers(miningBlock, textEncoder.encode(i.toString()));
-        if (sha256(hashBlock).startsWith('0'.repeat(numZerosMining))) {
+        if (sha256(hashBlock).startsWith(proofZerosString)) {
             proof_of_work = i;
             break;
         }
@@ -328,10 +214,161 @@ function _base64ToArrayBuffer(base64str) {
 
 
 // https://gist.github.com/72lions/4528834
-// Function takes two arraybuffers and combines them together f(bf1, bf2) -> bf1|bf2
+// Function takes two arraybuffers and combines them together f(bf1, bf2) -> bf = bf1|bf2
 function appendArrayBuffers(buffer1, buffer2) {
   let tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
   tmp.set(new Uint8Array(buffer1), 0);
   tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
   return tmp.buffer;
 }
+
+
+/*
+ * Button Logic Functions
+ */
+
+// Occurs when the generate wallet button is pressed
+// simply asks the coinbase to generate a private/public RSA key pair
+function generateCryptoKeys() {
+    $.getJSON(`${hostname}/api/wallet`, (json) => {
+        $("#private-key-form-walgen").val(json["private_key"]);
+        $("#public-key-form-walgen").val(json["public_key"]);
+    });
+}
+
+// Occurs when the button to sign a transaction is pressed
+// Function gets all the data from the transaction screen and sends it to the server,
+// and puts the signature into the signature text field
+function signTransaction() {
+    $.ajax({
+        url: `${hostname}/api/transaction/sign`,
+        type: "POST",
+        data: getTransactionDataFieldsToJson(),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function (data) {
+            // put the signature onto the field
+            $("#signature-mktrans").val(data["signature"]);
+        },
+        error: function (data) {
+            let errorMessage = `An error has occurred attempting to sign this transaction<br>
+                            The server returned status ${data["statusText"]}(${data["status"]}),<br>
+                            with message: "${data["responseText"]}"
+                            `
+            $("#messages").append(createHTMLAlertMessage(errorMessage));
+        }
+    })
+}
+
+// Occurs when the button to broadcast a transaction is pressed
+// Function gets all the data from the transaction screen and sends to server, and notifying the user if it was successful
+function broadcastTransaction() {
+    $.ajax({
+        url: `${hostname}/api/transaction`,
+        type: "POST",
+        data: getTransactionDataFieldsToJson(),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function () {
+            // Empty the signature and uuid fields to prevent accidental multiple broadcasts
+            $("#messages").append(createHTMLAlertMessage("Your transaction was successfully broadcast to nodes",
+                "success"));
+            $("#signature-mktrans").val("");
+            $("#uuidv4-mktrans-form").val("");
+        },
+        error: function (data) {
+            let errorMessage = `An error has occurred attempting to broadcast this transaction<br>
+                            The server returned status ${data["statusText"]}(${data["status"]}),<br>
+                            with message: "${data["responseText"]}"
+                            `
+            $("#messages").append(createHTMLAlertMessage(errorMessage));
+        }
+    });
+}
+
+
+// Occurs when the user presses the refresh transaction button, also called directly by other functions to reset the table
+// Function simply gets all non-mined transactions into the transaction table
+function refreshTransactions() {
+    $.getJSON(`${hostname}/api/transactions`, (json) => {
+        let table = $("#view-trans-table")
+        table.empty()
+        for (const transaction of json) {
+            table.append(createHTMLTableStr(transaction,
+                ["uuid", "sender_public_key", "recipient_public_key", "amount"]));
+        }
+    });
+}
+
+// Occurs when the user presses copy on the transaction table for a specific row element
+// For this, we create a json string and copy it to the user's clipboard
+function copyTransactionOnTable() {
+    let tr = $(this).parent().parent();
+    // Create a dictionary and go through the row to populate the dictionary
+    let dict = {}
+    tr.children().each(function (index, element) {
+        element.getAttribute("data-key")
+        if (element.hasAttribute("data-key") && element.hasAttribute("data-value"))
+            dict[element.getAttribute("data-key")] = element.getAttribute("data-value");
+    });
+
+    textToClipboard(JSON.stringify(dict));
+
+    // Animate a "Copied!" message onto the button and return back to the original image
+    let This = this;
+    let previous = $(this).html();
+    $(this).text("Copied!")
+    setTimeout(function () {
+        $(This).html(previous);
+    }, 1000)
+}
+
+//
+// Launcher
+//
+$(document).ready(function () {
+    // Get the number of zeros per hash
+    $.get(`${hostname}/api/mine/numzeros`, function(data) {
+       numZerosMining = parseInt(data);
+    });
+
+    // Allows navigation of the tabs
+    $(".nav li a").on("click", () => {
+        $(".nav li a").removeClass("active");
+        $(this).addClass("active");
+    });
+
+    // Allows the fading out of warnings when the close button is clicked
+    $(document).on("click", ".alert button", function () {
+        $(this).parent(".alert").alert("close");
+    });
+
+    // On View and managing transactions, when the copy button is clicked to copy that said row
+    $(document).on("click", ".tr-copy-btn", copyTransactionOnTable);
+
+    $("#gen-wallet-btn").on("click", generateCryptoKeys);
+
+    $("#sign-trans-btn").on("click", signTransaction);
+
+    $("#broadcast-trans-btn").on("click", broadcastTransaction);
+
+    $("#refresh-trans-button").on("click", refreshTransactions);
+
+    $("#refresh-uuidv4-btn").on("click", () => {
+        $("#uuidv4-mktrans-form").val(uuidv4()); // generate a new uuidv4
+    });
+
+    $("#mine-btn").on("click", () => {
+        // When the mine button is pressed
+        $("#mine-status").html(`Mined 0 blocks`);
+        miningStats = new MiningStats();
+        mine();
+    });
+
+    $("#clear-mining-table-btn").on("click", () => {
+        // clear button on mining table, remove all rows
+        $("#mining-table tr").remove();
+    });
+
+});
+

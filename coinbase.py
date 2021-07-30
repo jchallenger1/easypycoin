@@ -1,47 +1,36 @@
 import json
 import uuid
+import blockchain as crypto
 
 from flask import Flask, jsonify, request, render_template
 from blockchain import Wallet, Transaction, BlockChain
-import blockchain as crypto
-from uuid import uuid4
 
 app = Flask(__name__)
 blockchain = BlockChain()
 
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-# Endpoint creates a new wallet by providing returning a new public/private RSA key pair
-@app.route("/api/wallet", methods=["GET"])
-def create_new_wallet():
-    wallet = crypto.Wallet()
-    private_key, public_key = wallet.keys_to_ascii()
-    response = {
-        "private_key": private_key,
-        "public_key": public_key
-    }
-    return response
+"""
+General Functions
+"""
 
 
-def check_int(str_int: str) -> int:
+def check_int(str_int: str, lower_bound_check=True) -> int:
+    # Function checks if a string converts to an integer, returns said integer otherwise throws ValueError
     try:
         true_int = int(str_int)
     except ValueError:
         raise ValueError("amount is not an integer")
-    if true_int <= 0:
+
+    if true_int <= 0 and lower_bound_check:
         raise ValueError("amount to send cannot be less than 0")
+
     return true_int
 
 
 def check_uuid(str_uuid: str) -> uuid:
-    # UUIDV4 Checking
+    # Function checks if a string coverts to a uuid, returns said uuid otherwise throws ValueError
     try:
         uuidv4 = uuid.UUID(str_uuid)
-    except ValueError as ve:
+    except ValueError:
         raise ValueError("Given UUID is not a valid UUID string")
 
     if uuidv4.version != 4:
@@ -51,7 +40,12 @@ def check_uuid(str_uuid: str) -> uuid:
 
 
 class CheckTransReturn:
-    def __init__(self, sender_public_key, sender_private_key, recipient_public_key, amount, uuidv4, signature):
+    # A storage container class just for transaction requests
+    # Simply stores common information for transaction requests
+
+    # TODO force keys to be of RSA public/private key type
+    def __init__(self, sender_public_key: str, sender_private_key: str,
+                 recipient_public_key: str, amount: int, uuidv4: uuid.UUID, signature: str):
         self.sender_public_key = sender_public_key
         self.sender_private_key = sender_private_key
         self.recipient_public_key = recipient_public_key
@@ -60,10 +54,15 @@ class CheckTransReturn:
         self.signature = signature
 
 
-def check_transaction_request(json_request, check_private_key=False, check_signature=False) -> CheckTransReturn:
+def check_transaction_request(json_request: dict, check_private_key: bool = False,
+                              check_signature: bool = False) -> CheckTransReturn:
+    # Function takes a json request object(typically from flask) and
+    # checks if it has common fields for transaction requests; Returns a storage class
+
     if json_request is None:
         raise RuntimeError("Missing JSON POST request data")
 
+    # Get all possible requirements
     sender_public_key = json_request["sender_public_key"]
     sender_private_key = json_request["sender_private_key"]
     recipient_public_key = json_request["recipient_public_key"]
@@ -84,16 +83,42 @@ def check_transaction_request(json_request, check_private_key=False, check_signa
     return CheckTransReturn(sender_public_key, sender_private_key, recipient_public_key, amount, uuidv4, signature)
 
 
-# Allows for signing a transaction
-# Our server automatically assigns UUIDs to a transaction to prevent copying
+"""
+Endpoints
+"""
+
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+@app.route("/api/wallet", methods=["GET"])
+def create_new_wallet():
+    # Endpoint creates a new wallet by providing returning a new public/private RSA key pair
+    # Note that typically in a coinbase, the coinbase wouldn't be doing this, but this provides the option
+    wallet = crypto.Wallet()
+    private_key, public_key = wallet.keys_to_ascii()
+
+    response = {
+        "private_key": private_key,
+        "public_key": public_key
+    }
+    return response
+
+
 @app.route("/api/transaction/sign", methods=["POST"])
 def sign_transaction():
-    json_post = None
+    # Endpoint for allowing for signing a transaction
+    # Similarly to gen wallets we provide the option, the coinbase should not really have these.
+
+    # Check all inputs to verify
     try:
         json_post = check_transaction_request(request.json, check_private_key=True)
     except Exception as e:
         return str(e), 400
 
+    # From those inputs create a new transaction and sign it
     wallet = Wallet.from_ascii_keys(json_post.sender_private_key, json_post.sender_public_key)
     transaction = Transaction(wallet.public_key,
                               wallet.private_key,
@@ -102,21 +127,24 @@ def sign_transaction():
                               json_post.uuidv4)
     transaction.sign()
 
+    # Give back the transaction, but with the signature
     response = transaction.to_ascii_dict()
     response["signature"] = crypto.binary_to_ascii(transaction.signature)
 
     return jsonify(response), 200
 
 
-# Generates a new transaction and stores it on this node
 @app.route("/api/transaction", methods=["POST"])
 def generate_transaction():
-    json_post = None
+    # Endpoint generates a new transaction and stores it on this node
+
+    # Verify all inputs
     try:
         json_post = check_transaction_request(request.json, check_signature=True)
     except Exception as e:
         return str(e), 400
 
+    # Store them into a transaction object
     transaction = Transaction(crypto.ascii_key_to_public_key(json_post.sender_public_key),
                               None,
                               crypto.ascii_key_to_public_key(json_post.recipient_public_key),
@@ -124,6 +152,7 @@ def generate_transaction():
                               json_post.uuidv4)
     transaction.signature = crypto.ascii_to_binary(json_post.signature)
 
+    # ensure that the transaction is valid and then return
     if not transaction.is_valid():
         return "Transaction Signature is not valid", 400
 
@@ -133,8 +162,11 @@ def generate_transaction():
 
 
 @app.route("/api/transaction/<uuid:transaction_uuid>", methods=["GET"])
-def get_transaction(transaction_uuid):
+def get_transaction(transaction_uuid: uuid):
+    # Endpoint finds a match for a given uuid and gives back the transaction
+
     matches = [trans for trans in blockchain.transactions if trans.uuid == transaction_uuid]
+
     if len(matches) == 0:
         return "{}", 200
     elif len(matches) > 1:
@@ -145,12 +177,16 @@ def get_transaction(transaction_uuid):
 
 @app.route("/api/transactions", methods=["GET", "POST"])
 def get_transactions():
+    # Endpoint GET returns all transaction in this coinbase
+    # Endpoint POST returns all transactions in this coinbase that matches the uuid given from the client
+
     if request.method == "GET":
         return json.dumps(blockchain.transactions, default=crypto.serializer), 200
 
     if request.json is None or request.json["uuids"] is None:
         return "{}", 200
 
+    # Give matching transaction uuids
     return json.dumps(
         [transaction for transaction in blockchain.transactions if str(transaction.uuid) in request.json["uuids"]],
         default=crypto.serializer
@@ -159,8 +195,13 @@ def get_transactions():
 
 @app.route("/api/mine", methods=["GET", "POST"])
 def mine():
+    # Endpoint GET returns all minable blocks that the client is able to mine
+    # Endpoint POST expects a block in binary in form [miner's public key]|[block's mining input]|[proof of work]
+    # and adds it to the blockchain
+
     if request.method == "GET":
-        blockchain.create_mining_blocks()
+        blockchain.create_mining_blocks()  # Create mining blocks if needed
+        # Give the mining blocks in the mining input format
         return json.dumps(
             {"blocks": [{"uuid": block.uuid,
                          "block": block.get_mining_input()}
@@ -168,6 +209,7 @@ def mine():
             default=crypto.serializer
         ), 200
 
+    # Check/Verify inputs
     miner_public_key = request.json["miner_public_key"]
 
     try:
@@ -179,6 +221,7 @@ def mine():
     if [None, ""] in [block_uuid, miner_public_key, proof_of_work]:
         return "Missing POST values", 400
 
+    # Find the block the miner specified
     error_find_block_msg, block = blockchain.find_mine_block(block_uuid)
 
     if error_find_block_msg:
@@ -207,11 +250,14 @@ def mine():
 
 @app.route("/api/mine/numzeros", methods=["GET"])
 def give_number_of_zeros():
+    # Endpoint returns the number of zeros of a mining block's SHA256 hash that must be at the start for it to count as
+    # a valid proof of work
     return str(crypto.num_of_zeros), 200
 
 
 @app.route("/api/chain", methods=["GET"])
 def get_chain():
+    # Endpoint returns the blocks in the blockchain
     return jsonify(blockchain.chain), 200
 
 
