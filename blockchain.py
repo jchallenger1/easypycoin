@@ -2,8 +2,8 @@ import base64
 import binascii
 import uuid
 import hashlib
-from typing import List, Tuple, Union
 
+from typing import List, Tuple, Union
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -23,7 +23,7 @@ class Transaction:
     def __init__(
             self,
             sender_public_key: RSAPublicKey,
-            sender_private_key: RSAPrivateKey,
+            sender_private_key: Union[None, RSAPrivateKey],
             recipient_public_key: RSAPublicKey,
             amount: int, trans_uuid: uuid.UUID):
         self.sender_public_key = sender_public_key
