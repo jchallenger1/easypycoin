@@ -1,9 +1,15 @@
 import json
 import uuid
-import blockchain as crypto
+from typing import Union
 
+import cryptography.exceptions
+
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from flask import Flask, jsonify, request, render_template
-from blockchain import Wallet, Transaction, BlockChain
+
+import blockchain as crypto
+from blockchain import Transaction, BlockChain
+
 
 app = Flask(__name__)
 blockchain = BlockChain()
@@ -39,13 +45,32 @@ def check_uuid(str_uuid: str) -> uuid:
     return uuidv4
 
 
+def check_public_key(key: str) -> RSAPublicKey:
+    # Function checks if a string representation of a RSA public key and returns said key otherwise throws ValueError
+    try:
+        return crypto.ascii_key_to_public_key(key)
+    except ValueError:
+        raise ValueError("Given Public key could not be serialized")
+    except (TypeError, cryptography.exceptions.UnsupportedAlgorithm) as e:
+        raise ValueError(str(e))
+
+
+def check_private_key(key: str) -> RSAPrivateKey:
+    # Function checks if a string representation of a RSA public key and returns said key otherwise throws ValueError
+    try:
+        return crypto.ascii_key_to_private_key(key)
+    except ValueError:
+        raise ValueError("Given Private key could not be serialized")
+    except (TypeError, cryptography.exceptions.UnsupportedAlgorithm) as e:
+        raise ValueError(str(e))
+
+
 class CheckTransReturn:
     # A storage container class just for transaction requests
     # Simply stores common information for transaction requests
 
-    # TODO force keys to be of RSA public/private key type
-    def __init__(self, sender_public_key: str, sender_private_key: str,
-                 recipient_public_key: str, amount: int, uuidv4: uuid.UUID, signature: str):
+    def __init__(self, sender_public_key: RSAPublicKey, sender_private_key: Union[None, RSAPrivateKey],
+                 recipient_public_key: RSAPublicKey, amount: int, uuidv4: uuid.UUID, signature: str):
         self.sender_public_key = sender_public_key
         self.sender_private_key = sender_private_key
         self.recipient_public_key = recipient_public_key
@@ -54,7 +79,7 @@ class CheckTransReturn:
         self.signature = signature
 
 
-def check_transaction_request(json_request: dict, check_private_key: bool = False,
+def check_transaction_request(json_request: dict, check_private_key_flag: bool = False,
                               check_signature: bool = False) -> CheckTransReturn:
     # Function takes a json request object(typically from flask) and
     # checks if it has common fields for transaction requests; Returns a storage class
@@ -63,9 +88,9 @@ def check_transaction_request(json_request: dict, check_private_key: bool = Fals
         raise RuntimeError("Missing JSON POST request data")
 
     # Get all possible requirements
-    sender_public_key = json_request["sender_public_key"]
-    sender_private_key = json_request["sender_private_key"]
-    recipient_public_key = json_request["recipient_public_key"]
+    sender_public_key = check_public_key(json_request["sender_public_key"])
+    sender_private_key = check_private_key(json_request["sender_private_key"]) if check_private_key_flag else None
+    recipient_public_key = check_public_key(json_request["recipient_public_key"])
     amount = check_int(json_request["amount"])
     uuidv4 = check_uuid(json_request["uuid"])
     signature = json_request["signature"]
@@ -74,7 +99,7 @@ def check_transaction_request(json_request: dict, check_private_key: bool = Fals
     requirements = [sender_public_key, recipient_public_key, amount, uuidv4]
     if check_signature:
         requirements.append(signature)
-    if check_private_key:
+    if check_private_key_flag:
         requirements.append(sender_private_key)
 
     if [None, ""] in requirements:
@@ -114,15 +139,14 @@ def sign_transaction():
 
     # Check all inputs to verify
     try:
-        json_post = check_transaction_request(request.json, check_private_key=True)
+        json_post = check_transaction_request(request.json, check_private_key_flag=True)
     except Exception as e:
         return str(e), 400
 
     # From those inputs create a new transaction and sign it
-    wallet = Wallet.from_ascii_keys(json_post.sender_private_key, json_post.sender_public_key)
-    transaction = Transaction(wallet.public_key,
-                              wallet.private_key,
-                              crypto.ascii_key_to_public_key(json_post.recipient_public_key),
+    transaction = Transaction(json_post.sender_public_key,
+                              json_post.sender_private_key,
+                              json_post.recipient_public_key,
                               json_post.amount,
                               json_post.uuidv4)
     transaction.sign()
@@ -145,9 +169,9 @@ def generate_transaction():
         return str(e), 400
 
     # Store them into a transaction object
-    transaction = Transaction(crypto.ascii_key_to_public_key(json_post.sender_public_key),
+    transaction = Transaction(json_post.sender_public_key,
                               None,
-                              crypto.ascii_key_to_public_key(json_post.recipient_public_key),
+                              json_post.recipient_public_key,
                               json_post.amount,
                               json_post.uuidv4)
     transaction.signature = crypto.ascii_to_binary(json_post.signature)
