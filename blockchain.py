@@ -2,8 +2,9 @@ import base64
 import binascii
 import uuid
 import hashlib
-import database as dbmodels
+import dbmodels as dbmodels
 
+from uuid import UUID
 from flask_sqlalchemy import SQLAlchemy
 from typing import List, Tuple, Union
 from cryptography.exceptions import InvalidSignature
@@ -21,15 +22,20 @@ num_of_zeros = 4
 block_mining_reward = 20
 
 
-class Transaction:
+class Transaction(db.Model):
     """Class represents a transaction inside a block"""
+    uuid = db.Column(dbmodels.UUIDModel, primary_key=True)
+    sender_public_key = db.Column(dbmodels.PublicKeyModel, nullable=False)
+    recipient_public_key = db.Column(dbmodels.PublicKeyModel, nullable=False)
+    amount = db.Column(db.INTEGER, nullable=False)
+    signature = db.Column(db.BINARY, nullable=False)
 
     def __init__(
             self,
             sender_public_key: RSAPublicKey,
             sender_private_key: Union[None, RSAPrivateKey],
             recipient_public_key: RSAPublicKey,
-            amount: int, trans_uuid: uuid.UUID):
+            amount: int, trans_uuid: UUID):
         self.sender_public_key = sender_public_key
         self.sender_private_key = sender_private_key
         self.recipient_public_key = recipient_public_key
@@ -61,7 +67,7 @@ class Transaction:
         # Function converts this object to a string, without the private key
         return str(self.to_ascii_dict())
 
-    def sign(self):
+    def sign(self) -> None:
         # Function creates and sets the signature of this transaction, signed by the private key of the sender
         self.signature = self.sender_private_key.sign(
             str(self).encode("ascii"),
@@ -279,12 +285,12 @@ class BlockChain:
 
 class Wallet(db.Model):
     """Class represents a coinbase wallet, of which is an RSA private/public key pair"""
-    public_key = db.Column(dbmodels.KeyType, primary_key=True)
+    public_key = db.Column(dbmodels.PublicKeyModel, primary_key=True)
     balance = db.Column(db.Integer, nullable=True)
 
     def __init__(self, generate_keys=True):
         self.private_key = None
-        self.public_key = db.Column(dbmodels.KeyType, primary_key=True)
+        self.public_key = db.Column(dbmodels.PublicKeyModel, primary_key=True)
         if generate_keys:
             self.private_key = rsa.generate_private_key(
                 public_exponent=65537,

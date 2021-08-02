@@ -25,6 +25,11 @@ General Functions
 """
 
 
+def db_commit_directly(item) -> None:
+    db.session.add(item)
+    db.session.commit()
+
+
 def check_int(str_int: str, lower_bound_check=True) -> int:
     # Function checks if a string converts to an integer, returns said integer otherwise throws ValueError
     try:
@@ -130,8 +135,7 @@ def create_new_wallet():
     # Note that typically in a coinbase, the coinbase wouldn't be doing this, but this provides the option
     wallet = crypto.Wallet()
     private_key, public_key = wallet.keys_to_ascii()
-    db.session.add(wallet)
-    db.session.commit()
+    db_commit_directly(wallet)
     response = {
         "private_key": private_key,
         "public_key": public_key
@@ -187,6 +191,7 @@ def generate_transaction():
     if not transaction.is_valid():
         return "Transaction Signature is not valid", 400
 
+    db_commit_directly(transaction)
     blockchain.transactions.append(transaction)
 
     return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
@@ -292,10 +297,10 @@ def get_chain():
     return jsonify(blockchain.chain), 200
 
 
-@app.route("/debug/transaction", methods=["GET"])
+@app.route("/debug", methods=["GET"])
 def check_wallets():
-    print(Wallet.query.all())
-    return "", 200
+    print(Transaction.query.all())
+    return json.dumps(Transaction.query.all(), default=crypto.serializer), 200
 
 
 if __name__ == '__main__':
