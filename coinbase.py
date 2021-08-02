@@ -200,15 +200,10 @@ def generate_transaction():
 @app.route("/api/transaction/<uuid:transaction_uuid>", methods=["GET"])
 def get_transaction(transaction_uuid: uuid):
     # Endpoint finds a match for a given uuid and gives back the transaction
-
-    matches = [trans for trans in blockchain.transactions if trans.uuid == transaction_uuid]
-
-    if len(matches) == 0:
+    trans = Transaction.query.filter_by(uuid=transaction_uuid).one_or_none()
+    if trans is None:
         return "{}", 200
-    elif len(matches) > 1:
-        print(f"FATAL: Multiple uuids detected in a blockchain with uuid ${transaction_uuid}")
-
-    return json.dumps(matches[0], default=crypto.serializer), 200
+    return json.dumps(trans, default=crypto.serializer), 200
 
 
 @app.route("/api/transactions", methods=["GET", "POST"])
@@ -217,16 +212,18 @@ def get_transactions():
     # Endpoint POST returns all transactions in this coinbase that matches the uuid given from the client
 
     if request.method == "GET":
-        return json.dumps(blockchain.transactions, default=crypto.serializer), 200
+        return json.dumps(Transaction.query.all(), default=crypto.serializer), 200
 
     if request.json is None or request.json["uuids"] is None:
         return "{}", 200
+    return "Not implemented", 401
 
-    # Give matching transaction uuids
-    return json.dumps(
-        [transaction for transaction in blockchain.transactions if str(transaction.uuid) in request.json["uuids"]],
-        default=crypto.serializer
-    ), 200
+    # TODO
+    # # Give matching transaction uuids
+    # return json.dumps(
+    #     [transaction for transaction in blockchain.transactions if str(transaction.uuid) in request.json["uuids"]],
+    #     default=crypto.serializer
+    # ), 200
 
 
 @app.route("/api/mine", methods=["GET", "POST"])
@@ -299,8 +296,9 @@ def get_chain():
 
 @app.route("/debug", methods=["GET"])
 def check_wallets():
-    print(Transaction.query.all())
-    return json.dumps(Transaction.query.all(), default=crypto.serializer), 200
+    query = Transaction.query.filter_by(uuid="bcb7ce79-4549-44b6-a00c-cda69f26ck0c").one_or_none()
+    print(query)
+    return json.dumps(query, default=crypto.serializer), 200
 
 
 if __name__ == '__main__':
