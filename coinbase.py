@@ -8,10 +8,16 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 from flask import Flask, jsonify, request, render_template
 
 import blockchain as crypto
-from blockchain import Transaction, BlockChain
-
+from blockchain import Transaction, BlockChain, Wallet, db
 
 app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blockchain.sqlite3"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
 blockchain = BlockChain()
 
 """
@@ -124,7 +130,8 @@ def create_new_wallet():
     # Note that typically in a coinbase, the coinbase wouldn't be doing this, but this provides the option
     wallet = crypto.Wallet()
     private_key, public_key = wallet.keys_to_ascii()
-
+    db.session.add(wallet)
+    db.session.commit()
     response = {
         "private_key": private_key,
         "public_key": public_key
@@ -283,6 +290,12 @@ def give_number_of_zeros():
 def get_chain():
     # Endpoint returns the blocks in the blockchain
     return jsonify(blockchain.chain), 200
+
+
+@app.route("/debug/transaction", methods=["GET"])
+def check_wallets():
+    print(Wallet.query.all())
+    return "", 200
 
 
 if __name__ == '__main__':

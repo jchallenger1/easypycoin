@@ -2,13 +2,17 @@ import base64
 import binascii
 import uuid
 import hashlib
+import database as dbmodels
 
+from flask_sqlalchemy import SQLAlchemy
 from typing import List, Tuple, Union
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat, NoEncryption
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+
+db = SQLAlchemy()
 
 # The number of zeros the blockchain will search for on a sha256 hash for a proof of work
 num_of_zeros = 4
@@ -273,11 +277,14 @@ class BlockChain:
         self.chain.append(block)
 
 
-class Wallet:
+class Wallet(db.Model):
     """Class represents a coinbase wallet, of which is an RSA private/public key pair"""
+    public_key = db.Column(dbmodels.KeyType, primary_key=True)
+    balance = db.Column(db.Integer, nullable=True)
 
     def __init__(self, generate_keys=True):
-        self.private_key = self.public_key = None
+        self.private_key = None
+        self.public_key = db.Column(dbmodels.KeyType, primary_key=True)
         if generate_keys:
             self.private_key = rsa.generate_private_key(
                 public_exponent=65537,
