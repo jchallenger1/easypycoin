@@ -4,6 +4,7 @@ class MiningStats {
     constructor() {
         this.minedBlocks = 0;
         this.miningAttempts = 0;
+        this.doMine = true;
     }
 }
 
@@ -130,7 +131,8 @@ function mine() {
         mineBlock(json_data["blocks"][_.random(0, numBlocks - 1)], miner_key).then(() => {
             // done mining a block, refresh the transaction table and mine for another block
             refreshTransactions();
-            mine();
+            if (miningStats.doMine)
+                setTimeout(mine, 250); // give server a bit of breathing room
         });
 
     });
@@ -190,13 +192,18 @@ async function mineBlock(jsonblock, miner_public_key) {
             $("#mine-status").html(`Successfully Mined ${miningStats.minedBlocks}/${miningStats.miningAttempts} block attempts`);
             addToMiningTable("table-success", data);
         },
-        error: function (data) {
+        error: function (jqxhr) {
             ++miningStats.miningAttempts;
+            // Stop mining on fatal errors
+            if (jqxhr["status"] !== 401)
+                miningStats.doMine = false;
 
             $("#mine-status").html(`Successfully Mined ${miningStats.minedBlocks}/${miningStats.miningAttempts} block attempts`);
-            addToMiningTable("table-warning", data);
+
+            addToMiningTable("table-warning", jqxhr["responseText"]);
         }
-    });
+
+    }).fail(() => {miningStats.doMine = false;});
 
 }
 

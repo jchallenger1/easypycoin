@@ -8,15 +8,27 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 from flask import Flask, jsonify, request, render_template
 
 import blockchain as crypto
-from blockchain import Transaction, BlockChain
-
+from blockchain import Transaction, BlockChain, Block, db
 
 app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blockchain.sqlite3"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
+
 blockchain = BlockChain()
+
+with app.app_context():
+    db.create_all()
+    blockchain.create_genesis_block()
 
 """
 General Functions
 """
+
+
+def db_commit_directly(item) -> None:
+    db.session.add(item)
+    db.session.commit()
 
 
 def check_int(str_int: str, lower_bound_check=True) -> int:
@@ -124,7 +136,7 @@ def create_new_wallet():
     # Note that typically in a coinbase, the coinbase wouldn't be doing this, but this provides the option
     wallet = crypto.Wallet()
     private_key, public_key = wallet.keys_to_ascii()
-
+    db_commit_directly(wallet)
     response = {
         "private_key": private_key,
         "public_key": public_key
@@ -180,7 +192,8 @@ def generate_transaction():
     if not transaction.is_valid():
         return "Transaction Signature is not valid", 400
 
-    blockchain.transactions.append(transaction)
+    db_commit_directly(transaction)
+    # blockchain.transactions.append(transaction)
 
     return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
@@ -188,33 +201,16 @@ def generate_transaction():
 @app.route("/api/transaction/<uuid:transaction_uuid>", methods=["GET"])
 def get_transaction(transaction_uuid: uuid):
     # Endpoint finds a match for a given uuid and gives back the transaction
-
-    matches = [trans for trans in blockchain.transactions if trans.uuid == transaction_uuid]
-
-    if len(matches) == 0:
+    trans = Transaction.query.filter_by(uuid=transaction_uuid).one_or_none()
+    if trans is None:
         return "{}", 200
-    elif len(matches) > 1:
-        print(f"FATAL: Multiple uuids detected in a blockchain with uuid ${transaction_uuid}")
-
-    return json.dumps(matches[0], default=crypto.serializer), 200
+    return json.dumps(trans, default=crypto.serializer), 200
 
 
-@app.route("/api/transactions", methods=["GET", "POST"])
+@app.route("/api/transactions", methods=["GET"])
 def get_transactions():
     # Endpoint GET returns all transaction in this coinbase
-    # Endpoint POST returns all transactions in this coinbase that matches the uuid given from the client
-
-    if request.method == "GET":
-        return json.dumps(blockchain.transactions, default=crypto.serializer), 200
-
-    if request.json is None or request.json["uuids"] is None:
-        return "{}", 200
-
-    # Give matching transaction uuids
-    return json.dumps(
-        [transaction for transaction in blockchain.transactions if str(transaction.uuid) in request.json["uuids"]],
-        default=crypto.serializer
-    ), 200
+    return json.dumps(Transaction.query.filter_by(has_been_mined=False).all(), default=crypto.serializer), 200
 
 
 @app.route("/api/mine", methods=["GET", "POST"])
@@ -229,16 +225,16 @@ def mine():
         return json.dumps(
             {"blocks": [{"uuid": block.uuid,
                          "block": block.get_mining_input()}
-                        for block in blockchain.minable_blocks]},
+                        for block in Block.query.filter_by(is_mining_block=True).all()]},
             default=crypto.serializer
         ), 200
 
+    miner_public_key = request.json["miner_public_key"]  # we allow string type for the key here
     # Check/Verify inputs
-    miner_public_key = request.json["miner_public_key"]
-
     try:
         proof_of_work = check_int(request.json["proof_of_work"])
         block_uuid = check_uuid(request.json["uuid"])
+        check_public_key(miner_public_key)
     except ValueError as e:
         return str(e), 400
 
@@ -246,10 +242,10 @@ def mine():
         return "Missing POST values", 400
 
     # Find the block the miner specified
-    error_find_block_msg, block = blockchain.find_mine_block(block_uuid)
+    error_find_block_msg, fatal_error, block = blockchain.find_mine_block(block_uuid)
 
-    if error_find_block_msg:
-        return error_find_block_msg, 400
+    if block is None:
+        return error_find_block_msg, 400 if fatal_error else 401
 
     # Try this proof of work the miner sent and see if this works
     error_proof_msg = block.check_proof_of_work(proof_of_work, miner_public_key)
@@ -258,9 +254,7 @@ def mine():
         return error_proof_msg, 400
 
     # Checks out, now we need to add the transaction to the blockchain and remove it from minable block
-    move_error = blockchain.move_minable_block(block)
-    if move_error:
-        return move_error, 500
+    blockchain.move_minable_block(block)
 
     # We have to regenerate the mining blocks now, the previous block hash is now this one
     blockchain.clear_mining_blocks()
@@ -282,7 +276,7 @@ def give_number_of_zeros():
 @app.route("/api/chain", methods=["GET"])
 def get_chain():
     # Endpoint returns the blocks in the blockchain
-    return jsonify(blockchain.chain), 200
+    return "", 200
 
 
 if __name__ == '__main__':
