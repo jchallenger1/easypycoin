@@ -132,7 +132,7 @@ function mine() {
             // done mining a block, refresh the transaction table and mine for another block
             refreshTransactions();
             if (miningStats.doMine)
-                mine();
+                setTimeout(mine, 250); // give server a bit of breathing room
         });
 
     });

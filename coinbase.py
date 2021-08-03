@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 from flask import Flask, jsonify, request, render_template
 
 import blockchain as crypto
-from blockchain import Transaction, BlockChain, Wallet, Block, db
+from blockchain import Transaction, BlockChain, Block, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blockchain.sqlite3"
@@ -20,8 +20,6 @@ blockchain = BlockChain()
 with app.app_context():
     db.create_all()
     blockchain.create_genesis_block()
-
-
 
 """
 General Functions
@@ -209,24 +207,10 @@ def get_transaction(transaction_uuid: uuid):
     return json.dumps(trans, default=crypto.serializer), 200
 
 
-@app.route("/api/transactions", methods=["GET", "POST"])
+@app.route("/api/transactions", methods=["GET"])
 def get_transactions():
     # Endpoint GET returns all transaction in this coinbase
-    # Endpoint POST returns all transactions in this coinbase that matches the uuid given from the client
-
-    if request.method == "GET":
-        return json.dumps(Transaction.query.filter_by(has_been_mined=False).all(), default=crypto.serializer), 200
-
-    if request.json is None or request.json["uuids"] is None:
-        return "{}", 200
-    return "Not implemented", 401
-
-    # TODO
-    # # Give matching transaction uuids
-    # return json.dumps(
-    #     [transaction for transaction in blockchain.transactions if str(transaction.uuid) in request.json["uuids"]],
-    #     default=crypto.serializer
-    # ), 200
+    return json.dumps(Transaction.query.filter_by(has_been_mined=False).all(), default=crypto.serializer), 200
 
 
 @app.route("/api/mine", methods=["GET", "POST"])
@@ -245,7 +229,7 @@ def mine():
             default=crypto.serializer
         ), 200
 
-    miner_public_key = request.json["miner_public_key"]
+    miner_public_key = request.json["miner_public_key"]  # we allow string type for the key here
     # Check/Verify inputs
     try:
         proof_of_work = check_int(request.json["proof_of_work"])
@@ -270,9 +254,7 @@ def mine():
         return error_proof_msg, 400
 
     # Checks out, now we need to add the transaction to the blockchain and remove it from minable block
-    move_error = blockchain.move_minable_block(block)
-    if move_error:
-        return move_error, 500
+    blockchain.move_minable_block(block)
 
     # We have to regenerate the mining blocks now, the previous block hash is now this one
     blockchain.clear_mining_blocks()
@@ -295,12 +277,6 @@ def give_number_of_zeros():
 def get_chain():
     # Endpoint returns the blocks in the blockchain
     return "", 200
-
-
-@app.route("/debug", methods=["GET"])
-def check_wallets():
-    f, query = blockchain.find_mine_block(uuid.UUID("8bb3e807-00eb-424d-8a73-0488ac66c291"))
-    return json.dumps(query, default=crypto.serializer), 200
 
 
 if __name__ == '__main__':

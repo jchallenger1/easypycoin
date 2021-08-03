@@ -168,6 +168,10 @@ class Block(db.Model):
         # Function checks if the proof of work given with the miner's key results in n amount of zeros
         # Function returns an error message - empty string if this proof of work works with this block
 
+        # Ensure this block's transactions are valid first before setting proof and miner key
+        if not self.is_valid():
+            return "This block contains invalid transactions and will not be accepted for addition into the blockchain"
+
         # Set the proof and miner's key
         previous_proof = self.proof_of_work
         self.proof_of_work = other_proof
@@ -184,8 +188,7 @@ class Block(db.Model):
         return ""
 
     def is_valid(self) -> bool:
-        # Function checks this block is valid, defined by all transactions being valid plus
-        # the hash begins with n amount of zeros (TODO)
+        # Function checks this block is valid, defined by all transactions being valid
         return all(transaction.is_valid() for transaction in self.transactions)
 
     def __str__(self) -> str:
@@ -212,27 +215,24 @@ class BlockChain:
 
     def __init__(self):
         self.transactions = []  # All transactions given to the coinbase not present in the chain
-        self.minable_blocks = []  # All blocks that we can give to the user under a request to mine a block
-        self.chain = [Block.genesis_block()]  # The block chain
         self.used_block_uuids = set()  # All uuids ever given out for a block generated in this class
         self.nodes = set()  # All other coinbases (nodes)
         self.node_uuid = uuid.uuid4()  # uuid of our own coinbase
-        # indicator flag to create new blocks from transactions or keep the ones in minable blocks
-        self.create_new_mining_blocks = True
 
     max_transactions_const = 3  # maximum amount of transactions that can fit into a block
 
     def create_mining_blocks(self) -> None:
         # Function creates the minable blocks from the transactions given to the coinbase
-        # TODO: Allow for blocks to be added while mining is occuring - low priority
 
-        non_mined_transactions = Transaction.query.filter_by(has_been_mined=False).all()
+        # First find all transactions that are currently already being mined, theses cannot be added to another block
+        mining_blocks = Block.query.filter_by(is_mining_block=True).all()
+        currently_mining_transactions = []
+        for block in mining_blocks:
+            currently_mining_transactions.extend([trans.uuid for trans in block.transactions])
 
-        # TODO: A better way of checking whether we shouldn't make any blocks is if in our database there are blocks
-        # with is_mining_block set to true
-        if not self.create_new_mining_blocks:
-            print("Flag indicates not to make any new blocks")
-            return None
+        # Now only find the new transactions, these are the ones now that can be put into the block
+        non_mined_transactions = db.session.query(Transaction).filter_by(has_been_mined=False)\
+            .filter(Transaction.uuid.notin_(currently_mining_transactions)).all()
 
         if len(non_mined_transactions) < 1:
             print("Not enough transactions to make a block")
@@ -245,19 +245,16 @@ class BlockChain:
         for i in range(0, len(non_mined_transactions), BlockChain.max_transactions_const):
             transaction_blocks = non_mined_transactions[i:i + BlockChain.max_transactions_const]
             block = Block(transaction_blocks, prev_block_hash)
-            # self.minable_blocks.append(block)
             db.session.add(block)
-            db.session.commit()
             self.used_block_uuids.add(block.uuid)
+        db.session.commit()
 
-        self.create_new_mining_blocks = False
-
-    def clear_mining_blocks(self) -> None:
+    @staticmethod
+    def clear_mining_blocks() -> None:
         # Function simply clears the mining blocks and allows for more mining blocks to be generated
         bad_blocks = Block.query.filter_by(is_mining_block=True).delete()
         print(f"Cleared {bad_blocks} bad blocks")
         db.session.commit()
-        self.create_new_mining_blocks = True
 
     def add_transaction(self, transaction: Transaction) -> None:
         # Function adds a transaction to the coinbase
@@ -280,25 +277,17 @@ class BlockChain:
                 return "This block has already been mined and is in the blockchain", False, None
         return "Success", False, found_block
 
-    def move_minable_block(self, block: Block) -> Union[None, str]:
+    @staticmethod
+    def move_minable_block(block: Block) -> None:
         # Function moves a block that is from self.transactions to the chain
-        # TODO: add a block.validate here
         block.is_mining_block = False
         for transaction in block.transactions:
             transaction.has_been_mined = True
         db.session.commit()
-        return None
-        # try:
-        #     self.minable_blocks.remove(block)
-        #     for transaction in block.transactions:
-        #         self.transactions.remove(transaction)
-        # except ValueError as e:
-        #     return f"Failure trying to remove block {block.uuid}, {str(e)}"
-        # self.chain.append(block)
 
     @staticmethod
     def create_genesis_block():
-        # Creates a genesis block with no transactions
+        # Creates a genesis block with no transactions only if there isn't one
         if len(Block.query.all()) == 0:
             hash_creator = hashlib.sha256()
             hash_creator.update(b"0")  # Value from constructor
