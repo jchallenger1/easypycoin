@@ -19,7 +19,7 @@ blockchain = BlockChain()
 
 with app.app_context():
     db.create_all()
-    blockchain.create_genesis_block()
+    blockchain.check_genesis_block()
 
 """
 General Functions
@@ -280,9 +280,9 @@ def get_chain():
     return json.dumps({
         "blocks":
             [{
-                "index": 0,
+                "index": block.index,
                 "uuid": block.uuid,
-                "hash": block.hash(True, True),
+                "hash": block.block_hash,
                 "proof_of_work": block.proof_of_work,
                 "previous_hash": block.previous_block_hash,
                 "miner_key": crypto.public_key_to_ascii_key(block.miner_key) if block.miner_key is not None else "",
