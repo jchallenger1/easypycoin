@@ -299,13 +299,7 @@ def get_chain():
 
 @app.route("/debug", methods=["GET"])
 def check_wallets():
-    query = Transaction.query.all()
-    block1 = crypto.Block([query[0]], "")
-    block2 = crypto.Block([query[1]], "")
-    print(block1.index)
-    print(block2.index)
-    db_commit_directly(block1)
-    db_commit_directly(block2)
+    f, query = blockchain.find_mine_block(uuid.UUID("8bb3e807-00eb-424d-8a73-0488ac66c291"))
     return json.dumps(query, default=crypto.serializer), 200
 
 

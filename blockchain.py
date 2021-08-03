@@ -237,7 +237,7 @@ class BlockChain:
             return None
 
         # Create all new mining blocks
-        prev_block_hash = Block.query.filter_by(is_mining_block=False)[-1].hash()#self.chain[-1].hash()
+        prev_block_hash = Block.query.filter_by(is_mining_block=False)[-1].hash()
 
         # partition transactions into n sized arrays to put into each block
         for i in range(0, len(non_mined_transactions), BlockChain.max_transactions_const):
@@ -252,7 +252,9 @@ class BlockChain:
 
     def clear_mining_blocks(self) -> None:
         # Function simply clears the mining blocks and allows for more mining blocks to be generated
-        self.minable_blocks.clear()
+        for block in Block.query.filter_by(is_mining_block=False).all():
+            db.session.remove(block)
+        db.session.commit()
         self.create_new_mining_blocks = True
 
     def add_transaction(self, transaction: Transaction) -> None:
@@ -262,48 +264,35 @@ class BlockChain:
     def find_mine_block(self, block_uuid: uuid) -> Union[Tuple[str, Block], Tuple[str, None]]:
         # Function finds a mining block given the block's uuid
         # Returns an error message and Block pair
-        Block.query.filter_by(uuid=block_uuid).first()
-        # First find the block the user is trying to mine
-        found_block = None
-        # Look in minable blocks
-        for block in self.minable_blocks:
-            if block.uuid == block_uuid:
-                found_block = block
-                break
+        found_block = Block.query.filter_by(uuid=block_uuid).first()
 
-        # Block was not found
         if found_block is None:
-
-            # Check if it's already in the blockchain
-            block_already_minded = False
-            for block in self.chain:
-                if block.uuid == block_uuid:
-                    block_already_minded = True
-                    break
-            if block_already_minded:
-                return "This block has already been mined and is in the blockchain", None
-
             # Check if it's an invalid block by someone else mining a different one, thus this block has an incorrect
             # previous hash
             if block_uuid in self.used_block_uuids:
                 return "This block is no longer valid due to a blockchain addition", None
-
             # Block didn't exist
             return f"This block with uuid {block_uuid} does not exist!", None
-
+        else:
+            if not found_block.is_mining_block:
+                return "This block has already been mined and is in the blockchain", None
         return "", found_block
 
     def move_minable_block(self, block: Block) -> Union[None, str]:
         # Function moves a block that is from self.transactions to the chain
         # TODO: add a block.validate here
-
-        try:
-            self.minable_blocks.remove(block)
-            for transaction in block.transactions:
-                self.transactions.remove(transaction)
-        except ValueError as e:
-            return f"Failure trying to remove block {block.uuid}, {str(e)}"
-        self.chain.append(block)
+        block.update(dict(is_mining_block=True))
+        for transaction in block.transactions:
+            transaction.update(dict(has_been_mined=True))
+        db.session.commit()
+        return None
+        # try:
+        #     self.minable_blocks.remove(block)
+        #     for transaction in block.transactions:
+        #         self.transactions.remove(transaction)
+        # except ValueError as e:
+        #     return f"Failure trying to remove block {block.uuid}, {str(e)}"
+        # self.chain.append(block)
 
     @staticmethod
     def create_genesis_block():
