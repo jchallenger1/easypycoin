@@ -59,9 +59,11 @@ class Transaction(db.Model):
             "uuid": self.uuid
         }
 
-    def to_ascii_dict(self) -> dict:
+    def to_ascii_dict(self, include_signature=False) -> dict:
         # Similarly, function returns an ascii dictionary of this transaction, without the private key
-        return {
+        # signatures should only be included if the transaction has already been placed in a block
+
+        ret = {
             "sender_public_key": binary_to_ascii(
                 self.sender_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
             "recipient_public_key": binary_to_ascii(
@@ -69,6 +71,11 @@ class Transaction(db.Model):
             "amount": self.amount,
             "uuid": str(self.uuid)
         }
+
+        if include_signature:
+            ret["signature"] = binary_to_ascii(self.signature) if self.signature is not None else b''
+
+        return ret
 
     def __str__(self) -> str:
         # Function converts this object to a string, without the private key
@@ -353,6 +360,10 @@ def ascii_to_binary(ascii_item: str) -> bytes:
 def ascii_key_to_public_key(ascii_key: str) -> RSAPublicKey:
     # function converts an ascii representation of a public key to bytes
     return serialization.load_der_public_key(binascii.unhexlify(ascii_key))
+
+
+def public_key_to_ascii_key(pkey: RSAPublicKey) -> str:
+    return binary_to_ascii(pkey.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo))
 
 
 def ascii_key_to_private_key(ascii_key: str, password: bytes = None) -> RSAPrivateKey:

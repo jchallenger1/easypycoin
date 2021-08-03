@@ -276,7 +276,22 @@ def give_number_of_zeros():
 @app.route("/api/chain", methods=["GET"])
 def get_chain():
     # Endpoint returns the blocks in the blockchain
-    return "", 200
+    chain = Block.query.filter_by(is_mining_block=False).all()
+    return json.dumps({
+        "blocks":
+            [{"uuid": block.uuid,
+              "hash": block.hash(True, True),
+              "proof_of_work": block.proof_of_work,
+              "previous_hash": block.previous_block_hash,
+              "miner_key": crypto.public_key_to_ascii_key(block.miner_key) if block.miner_key is not None else "",
+              "transactions": [trans.to_ascii_dict(include_signature=True) for trans in block.transactions]
+              }
+             for block in chain]
+    }, default=crypto.serializer), 200
+
+@app.route("/api/debug", methods=["GET"])
+def k():
+    chain = Block.query.filter_by(is_mining_block=False).all()
 
 
 if __name__ == '__main__':
