@@ -8,17 +8,20 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 from flask import Flask, jsonify, request, render_template
 
 import blockchain as crypto
-from blockchain import Transaction, BlockChain, Wallet, db
+from blockchain import Transaction, BlockChain, Wallet, Block, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blockchain.sqlite3"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 
+blockchain = BlockChain()
+
 with app.app_context():
     db.create_all()
+    blockchain.create_genesis_block()
 
-blockchain = BlockChain()
+
 
 """
 General Functions
@@ -192,7 +195,7 @@ def generate_transaction():
         return "Transaction Signature is not valid", 400
 
     db_commit_directly(transaction)
-    blockchain.transactions.append(transaction)
+    # blockchain.transactions.append(transaction)
 
     return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
@@ -238,7 +241,7 @@ def mine():
         return json.dumps(
             {"blocks": [{"uuid": block.uuid,
                          "block": block.get_mining_input()}
-                        for block in blockchain.minable_blocks]},
+                        for block in Block.query.filter_by(is_mining_block=True).all()]},
             default=crypto.serializer
         ), 200
 
@@ -296,8 +299,13 @@ def get_chain():
 
 @app.route("/debug", methods=["GET"])
 def check_wallets():
-    query = Transaction.query.filter_by(uuid="bcb7ce79-4549-44b6-a00c-cda69f26ck0c").one_or_none()
-    print(query)
+    query = Transaction.query.all()
+    block1 = crypto.Block([query[0]], "")
+    block2 = crypto.Block([query[1]], "")
+    print(block1.index)
+    print(block2.index)
+    db_commit_directly(block1)
+    db_commit_directly(block2)
     return json.dumps(query, default=crypto.serializer), 200
 
 

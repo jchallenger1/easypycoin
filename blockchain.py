@@ -2,6 +2,7 @@ import base64
 import binascii
 import uuid
 import hashlib
+
 import dbmodels as dbmodels
 
 from uuid import UUID
@@ -24,11 +25,16 @@ block_mining_reward = 20
 
 class Transaction(db.Model):
     """Class represents a transaction inside a block"""
+
+    # Database Entries
+    __tablename__ = "transaction"
     uuid = db.Column(dbmodels.UUIDModel, primary_key=True)
     sender_public_key = db.Column(dbmodels.PublicKeyModel, nullable=False)
     recipient_public_key = db.Column(dbmodels.PublicKeyModel, nullable=False)
     amount = db.Column(db.INTEGER, nullable=False)
     signature = db.Column(db.BINARY, nullable=False)
+    block_id = db.Column(dbmodels.UUIDModel, db.ForeignKey("block.uuid"), nullable=True)
+    has_been_mined = db.Column(db.Boolean, nullable=False)
 
     def __init__(
             self,
@@ -42,6 +48,7 @@ class Transaction(db.Model):
         self.amount = amount
         self.uuid = trans_uuid
         self.signature = b""
+        self.has_been_mined = False
 
     def to_binary_dict(self) -> dict:
         # Function returns a dictionary of this transaction, without the private key
@@ -101,12 +108,21 @@ class Transaction(db.Model):
             return False
 
 
-class Block:
+class Block(db.Model):
     """
         Class represents a block used in a blockchain, a block itself may have multiple transactions
         Note that when mining, it's expected that the final block/bytes given is:
         [miner's public key]|[block's mining input]|[proof of work]
     """
+
+    # Database Entries
+    __tablename__ = "block"
+    uuid = db.Column(dbmodels.UUIDModel, primary_key=True)
+    miner_key = db.Column(dbmodels.PublicKeyModel, nullable=True)
+    previous_block_hash = db.Column(db.String(64), nullable=False)
+    proof_of_work = db.Column(db.Integer, nullable=True)
+    is_mining_block = db.Column(db.Boolean, nullable=False)
+    transactions = db.relationship("Transaction", backref="block", lazy=True)
 
     def __init__(self, transactions: List[Transaction], previous_block_hash: str):
         self.transactions = transactions
@@ -114,6 +130,9 @@ class Block:
         self.previous_block_hash = previous_block_hash
         self.uuid = uuid.uuid4()
         self.miner_key = None  # The key of the person who mined this block
+        for transaction in self.transactions:
+            transaction.block_id = self.uuid
+        self.is_mining_block = True
 
     def get_mining_input(self) -> str:
         # Returns the mining representation of this block, used by miners
@@ -207,22 +226,26 @@ class BlockChain:
         # Function creates the minable blocks from the transactions given to the coinbase
         # TODO: Allow for blocks to be added while mining is occuring - low priority
 
+        non_mined_transactions = Transaction.query.filter_by(has_been_mined=False).all()
+
         if not self.create_new_mining_blocks:
             print("Flag indicates not to make any new blocks")
             return None
 
-        if len(self.transactions) < 1:
+        if len(non_mined_transactions) < 1:
             print("Not enough transactions to make a block")
             return None
 
         # Create all new mining blocks
-        prev_block_hash = self.chain[-1].hash()
+        prev_block_hash = Block.query.filter_by(is_mining_block=False)[-1].hash()#self.chain[-1].hash()
 
         # partition transactions into n sized arrays to put into each block
-        for i in range(0, len(self.transactions), BlockChain.max_transactions_const):
-            transaction_blocks = self.transactions[i:i + BlockChain.max_transactions_const]
+        for i in range(0, len(non_mined_transactions), BlockChain.max_transactions_const):
+            transaction_blocks = non_mined_transactions[i:i + BlockChain.max_transactions_const]
             block = Block(transaction_blocks, prev_block_hash)
-            self.minable_blocks.append(block)
+            # self.minable_blocks.append(block)
+            db.session.add(block)
+            db.session.commit()
             self.used_block_uuids.add(block.uuid)
 
         self.create_new_mining_blocks = False
@@ -239,7 +262,7 @@ class BlockChain:
     def find_mine_block(self, block_uuid: uuid) -> Union[Tuple[str, Block], Tuple[str, None]]:
         # Function finds a mining block given the block's uuid
         # Returns an error message and Block pair
-
+        Block.query.filter_by(uuid=block_uuid).first()
         # First find the block the user is trying to mine
         found_block = None
         # Look in minable blocks
@@ -281,6 +304,18 @@ class BlockChain:
         except ValueError as e:
             return f"Failure trying to remove block {block.uuid}, {str(e)}"
         self.chain.append(block)
+
+    @staticmethod
+    def create_genesis_block():
+        # Creates a genesis block with no transactions
+        if len(Block.query.all()) == 0:
+            hash_creator = hashlib.sha256()
+            hash_creator.update(b"0")  # Value from constructor
+            genesis = Block([], hash_creator.digest().hex())
+            genesis.previous_block_hash = '0' * 64
+            genesis.is_mining_block = False
+            db.session.add(genesis)
+            db.session.commit()
 
 
 class Wallet(db.Model):
