@@ -1,3 +1,4 @@
+import binascii
 import uuid
 
 import sqlalchemy.types as types
@@ -15,6 +16,8 @@ class PublicKeyModel(types.TypeDecorator):
     def process_literal_param(self, value, dialect):
         if value is None:
             return b"0"
+        if isinstance(value, str):
+            value = serialization.load_der_public_key(binascii.unhexlify(value))
         return value.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
 
     process_bind_param = process_literal_param

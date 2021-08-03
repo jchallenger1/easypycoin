@@ -228,6 +228,8 @@ class BlockChain:
 
         non_mined_transactions = Transaction.query.filter_by(has_been_mined=False).all()
 
+        # TODO: A better way of checking whether we shouldn't make any blocks is if in our database there are blocks
+        # with is_mining_block set to true
         if not self.create_new_mining_blocks:
             print("Flag indicates not to make any new blocks")
             return None
@@ -252,8 +254,8 @@ class BlockChain:
 
     def clear_mining_blocks(self) -> None:
         # Function simply clears the mining blocks and allows for more mining blocks to be generated
-        for block in Block.query.filter_by(is_mining_block=False).all():
-            db.session.remove(block)
+        bad_blocks = Block.query.filter_by(is_mining_block=True).delete()
+        print(f"Cleared {bad_blocks} bad blocks")
         db.session.commit()
         self.create_new_mining_blocks = True
 
@@ -261,29 +263,29 @@ class BlockChain:
         # Function adds a transaction to the coinbase
         self.transactions.append(transaction)
 
-    def find_mine_block(self, block_uuid: uuid) -> Union[Tuple[str, Block], Tuple[str, None]]:
+    def find_mine_block(self, block_uuid: uuid) -> Union[Tuple[str, bool, Block], Tuple[str, bool, None]]:
         # Function finds a mining block given the block's uuid
-        # Returns an error message and Block pair
+        # Returns an error message, If error is fatal to a miner, and the block
         found_block = Block.query.filter_by(uuid=block_uuid).first()
 
         if found_block is None:
             # Check if it's an invalid block by someone else mining a different one, thus this block has an incorrect
             # previous hash
             if block_uuid in self.used_block_uuids:
-                return "This block is no longer valid due to a blockchain addition", None
+                return "This block is no longer valid due to a blockchain addition", False, None
             # Block didn't exist
-            return f"This block with uuid {block_uuid} does not exist!", None
+            return f"This block with uuid {block_uuid} does not exist!", True, None
         else:
             if not found_block.is_mining_block:
-                return "This block has already been mined and is in the blockchain", None
-        return "", found_block
+                return "This block has already been mined and is in the blockchain", False, None
+        return "Success", False, found_block
 
     def move_minable_block(self, block: Block) -> Union[None, str]:
         # Function moves a block that is from self.transactions to the chain
         # TODO: add a block.validate here
-        block.update(dict(is_mining_block=True))
+        block.is_mining_block = False
         for transaction in block.transactions:
-            transaction.update(dict(has_been_mined=True))
+            transaction.has_been_mined = True
         db.session.commit()
         return None
         # try:

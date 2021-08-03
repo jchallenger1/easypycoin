@@ -215,7 +215,7 @@ def get_transactions():
     # Endpoint POST returns all transactions in this coinbase that matches the uuid given from the client
 
     if request.method == "GET":
-        return json.dumps(Transaction.query.all(), default=crypto.serializer), 200
+        return json.dumps(Transaction.query.filter_by(has_been_mined=False).all(), default=crypto.serializer), 200
 
     if request.json is None or request.json["uuids"] is None:
         return "{}", 200
@@ -245,12 +245,12 @@ def mine():
             default=crypto.serializer
         ), 200
 
-    # Check/Verify inputs
     miner_public_key = request.json["miner_public_key"]
-
+    # Check/Verify inputs
     try:
         proof_of_work = check_int(request.json["proof_of_work"])
         block_uuid = check_uuid(request.json["uuid"])
+        check_public_key(miner_public_key)
     except ValueError as e:
         return str(e), 400
 
@@ -258,10 +258,10 @@ def mine():
         return "Missing POST values", 400
 
     # Find the block the miner specified
-    error_find_block_msg, block = blockchain.find_mine_block(block_uuid)
+    error_find_block_msg, fatal_error, block = blockchain.find_mine_block(block_uuid)
 
-    if error_find_block_msg:
-        return error_find_block_msg, 400
+    if block is None:
+        return error_find_block_msg, 400 if fatal_error else 401
 
     # Try this proof of work the miner sent and see if this works
     error_proof_msg = block.check_proof_of_work(proof_of_work, miner_public_key)
@@ -294,7 +294,7 @@ def give_number_of_zeros():
 @app.route("/api/chain", methods=["GET"])
 def get_chain():
     # Endpoint returns the blocks in the blockchain
-    return jsonify(blockchain.chain), 200
+    return "", 200
 
 
 @app.route("/debug", methods=["GET"])
