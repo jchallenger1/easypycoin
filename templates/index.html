@@ -178,16 +178,19 @@
         <div class="tab-pane fade show" id="chain" role="tabpanel" aria-labelledby="chain-tab">
             <h2 class="text-center">View Blocks from Blockchain</h2>
             <div>
-                <button type="button" class="btn btn-outline-primary btn-large">Refresh Transactions</button>
+                <button type="button" class="btn btn-outline-primary btn-large mb-4" id="refresh-chain-btn">Refresh Blockchain</button>
             </div>
             <div class="container-fluid table-responsive">
                 <table class="table table-striped table-primary">
                     <thead>
                         <tr>
                             <th scope="col">Index</th>
+                            <th scope="col">UUID</th>
                             <th scope="col">SHA256 Hash</th>
                             <th scope="col">Previous SHA256 Hash</th>
-                            <th scope="col">Transactions</th>
+                            <th scope="col">Num. of Transactions</th>
+                            <th scope="col">Proof of Work</th>
+                            <th scope="col">Miner's key</th>
                             <th scope="col">Actions</th>
                         </tr>
                     </thead>
@@ -195,6 +198,29 @@
 
                     </tbody>
                 </table>
+            </div>
+            <div class="container form-group">
+                <h3 class="text-center">Filters</h3>
+                <div class="col-9">
+                    <div class="input-group mb-3 ">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="filter-block-uuid-text">Block UUID</span>
+                        </div>
+                        <input type="text" class="form-control" id="filter-uuid" aria-label="Block UUID" aria-describedby="filter-block-uuid-text">
+                    </div>
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="filter-miner-key">Miner's key</span>
+                        </div>
+                        <input type="text" class="form-control" id="filter-key" aria-label="Miner Key" aria-describedby="filter-miner-key">
+                    </div>
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="filter-blockchain-index">Blockchain index</span>
+                        </div>
+                        <input type="text" class="form-control" id="filter-index" aria-label="Blockchain index" aria-describedby="filter-index">
+                    </div>
+                </div>
             </div>
         </div>
 

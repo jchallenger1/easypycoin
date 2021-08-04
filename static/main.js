@@ -54,29 +54,28 @@ function getTransactionDataFieldsToJson() {
 
 
 // Function trims a string and adds ... between if its over a certain length, returns original string if not over length
-function trimTableStr(trimStr) {
-    if (trimStr.length > 60)
-        return trimStr.substring(0, 30) + "..." + trimStr.substring(trimStr.length - 30, trimStr.length);
+function trimTableStr(trimStr, trimLength = 60) {
+    if (trimStr.length > trimLength)
+        return trimStr.substring(0, trimLength / 2) + "..." + trimStr.substring(trimStr.length - trimLength, trimStr.length);
     return trimStr;
 }
 
-// Function takes a transaction object and extracts all keys from keyObjects to form an HTML <tr> row
-// This is specific to the transaction table
-function createHTMLTableStr(transaction, keyObjects) {
+// Function takes a json object and extracts all keys from keyObjects to form an HTML <tr> row
+function createHTMLTableStr(jsonObject, keyObjects, lengthOfTrim = 60) {
 
     if (!_.every(keyObjects, (field) => {
-        return field in transaction;
+        return field in jsonObject;
     })) {
         console.log("Error creating a table row. Missing keyObject!");
         return;
     }
 
-    // For each transaction JSON object we receive, add a row, keyObjects determines what properties to take from the JSON
+    // For each JSON object we receive, add a row, keyObjects determines what properties to take from the JSON
     // object to form a row (Each th of the original table should be included in keyObjects)
     let text = `<tr>`;
     for (const key of keyObjects)
         // Add in the key data-value and data-key for easy extraction for copy button
-        text += `<td data-value="${transaction[key]}" data-key="${key}">${trimTableStr(transaction[key])}</td>`;
+        text += `<td data-value="${jsonObject[key]}" data-key="${key}">${trimTableStr(jsonObject[key], lengthOfTrim)}</td>`;
     // Create a copy button
     text += `<td><button class="btn btn-primary tr-copy-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
@@ -133,6 +132,8 @@ function mine() {
             refreshTransactions();
             if (miningStats.doMine)
                 setTimeout(mine, 250); // give server a bit of breathing room
+            else
+                $("#mine-status").html("Stopped Mining due to a mining failure");
         });
 
     });
@@ -141,12 +142,12 @@ function mine() {
 
 // Mines a block by finding the proof of work and sending the result to the server
 // base64block is a base64 string encoded in utf-8
-// blockuuid is a string representing the block of the uuid
+// blockUUID is a string representing the block of the uuid
 // miner_public_key is a string of the miner's key that the user entered in the html page
-async function mineBlock(jsonblock, miner_public_key) {
+async function mineBlock(jsonBlock, miner_public_key) {
     // The Final mining block is [miner's key] + [server's block] + [nonce]
-    let block = _base64ToArrayBuffer(jsonblock["block"]);
-    let blockUUID = jsonblock["uuid"];
+    let block = _base64ToArrayBuffer(jsonBlock["block"]);
+    let blockUUID = jsonBlock["uuid"];
 
     const miningBlock = appendArrayBuffers(textEncoder.encode(miner_public_key), block);
 
@@ -330,6 +331,38 @@ function copyTransactionOnTable() {
     }, 1000)
 }
 
+// Occurs when the user presses on the refresh block chain button
+// Simply call the server for the blockchain and put it in the table.
+function refreshBlockChain() {
+    // Get value of the filters
+    let blockUUID = $("#filter-uuid").val();
+    let minerKey = $("#filter-key").val();
+    let blockIndex = $("#filter-index").val();
+
+    // Create a query string from said filters
+    const params = new URLSearchParams();
+    if (blockUUID) params.set("block_uuid", blockUUID);
+    if (minerKey) params.set("miner_key", minerKey);
+    if (blockIndex) params.set("block_index", blockIndex);
+    const query = params.toString().length === 0 ? "" : "?"+ params.toString();
+
+    // Get the blockchain with any applied filters
+    $.getJSON(`${hostname}/api/chain${query}`, (data) => {
+        let table = $("#blockchain-table")
+        table.empty()
+
+        for (const block of data["blocks"]) {
+
+            block["number_of_transactions"] = block["transactions"].length;
+            table.append(createHTMLTableStr(block,
+                ["index", "uuid", "hash", "previous_hash", "number_of_transactions", "proof_of_work", "miner_key"],
+                15));
+        }
+    }).fail((jqxhr) => {
+        $("#messages").append(createHTMLAlertMessage(jqxhr["responseText"]));
+    });
+}
+
 //
 // Launcher
 //
@@ -376,6 +409,8 @@ $(document).ready(function () {
         // clear button on mining table, remove all rows
         $("#mining-table tr").remove();
     });
+
+    $("#refresh-chain-btn").on("click", refreshBlockChain);
 
 });
 

@@ -3,6 +3,8 @@ import binascii
 import uuid
 import hashlib
 
+from sqlalchemy import func
+
 import dbmodels as dbmodels
 
 from uuid import UUID
@@ -59,9 +61,11 @@ class Transaction(db.Model):
             "uuid": self.uuid
         }
 
-    def to_ascii_dict(self) -> dict:
+    def to_ascii_dict(self, include_signature=False) -> dict:
         # Similarly, function returns an ascii dictionary of this transaction, without the private key
-        return {
+        # signatures should only be included if the transaction has already been placed in a block
+
+        ret = {
             "sender_public_key": binary_to_ascii(
                 self.sender_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)),
             "recipient_public_key": binary_to_ascii(
@@ -69,6 +73,11 @@ class Transaction(db.Model):
             "amount": self.amount,
             "uuid": str(self.uuid)
         }
+
+        if include_signature:
+            ret["signature"] = binary_to_ascii(self.signature) if self.signature is not None else b''
+
+        return ret
 
     def __str__(self) -> str:
         # Function converts this object to a string, without the private key
@@ -123,6 +132,8 @@ class Block(db.Model):
     proof_of_work = db.Column(db.Integer, nullable=True)
     is_mining_block = db.Column(db.Boolean, nullable=False)
     transactions = db.relationship("Transaction", backref="block", lazy=True)
+    index = db.Column(db.Integer, nullable=True)
+    block_hash = db.Column(db.String(64), nullable=True)
 
     def __init__(self, transactions: List[Transaction], previous_block_hash: str):
         self.transactions = transactions
@@ -185,6 +196,10 @@ class Block(db.Model):
             self.proof_of_work = previous_proof
             self.miner_key = None
             return f"Proof of work {other_proof} gave SHA256 {block_hash} which does not start with {start_num_zeros}"
+
+        # set the hash
+        self.block_hash = block_hash
+
         return ""
 
     def is_valid(self) -> bool:
@@ -202,12 +217,21 @@ class Block(db.Model):
         yield "previous_block_hash", self.previous_block_hash
         yield "proof_of_work", self.proof_of_work
 
-    @staticmethod
-    def genesis_block():
-        # Creates a genesis block with no transactions
+    @classmethod
+    def genesis_block(cls):
+        # Function creates the genesis block, the first block in our blockchain
+
         hash_creator = hashlib.sha256()
-        hash_creator.update(b"0")  # Value from constructor
-        return Block([], hash_creator.digest().hex())
+        hash_creator.update(b'')
+
+        genesis = cls([], hash_creator.digest().hex())
+
+        genesis.previous_block_hash = '0' * 64
+        genesis.is_mining_block = False
+        genesis.index = 0
+        genesis.block_hash = genesis.hash(include_proof_of_work=False, include_miner_key=False)
+
+        return genesis
 
 
 class BlockChain:
@@ -281,20 +305,18 @@ class BlockChain:
     def move_minable_block(block: Block) -> None:
         # Function moves a block that is from self.transactions to the chain
         block.is_mining_block = False
+        max_index = db.session.query(func.max(Block.index)).scalar()
+        print(max_index)
+        block.index = max_index + 1
         for transaction in block.transactions:
             transaction.has_been_mined = True
         db.session.commit()
 
     @staticmethod
-    def create_genesis_block():
+    def check_genesis_block():
         # Creates a genesis block with no transactions only if there isn't one
         if len(Block.query.all()) == 0:
-            hash_creator = hashlib.sha256()
-            hash_creator.update(b"0")  # Value from constructor
-            genesis = Block([], hash_creator.digest().hex())
-            genesis.previous_block_hash = '0' * 64
-            genesis.is_mining_block = False
-            db.session.add(genesis)
+            db.session.add(Block.genesis_block())
             db.session.commit()
 
 
@@ -353,6 +375,10 @@ def ascii_to_binary(ascii_item: str) -> bytes:
 def ascii_key_to_public_key(ascii_key: str) -> RSAPublicKey:
     # function converts an ascii representation of a public key to bytes
     return serialization.load_der_public_key(binascii.unhexlify(ascii_key))
+
+
+def public_key_to_ascii_key(pkey: RSAPublicKey) -> str:
+    return binary_to_ascii(pkey.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo))
 
 
 def ascii_key_to_private_key(ascii_key: str, password: bytes = None) -> RSAPrivateKey:
