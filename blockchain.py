@@ -31,8 +31,8 @@ class Transaction(db.Model):
     # Database Entries
     __tablename__ = "transaction"
     uuid = db.Column(dbmodels.UUIDModel, primary_key=True)
-    sender_public_key = db.Column(dbmodels.PublicKeyModel, nullable=False)
-    recipient_public_key = db.Column(dbmodels.PublicKeyModel, nullable=False)
+    sender_public_key = db.Column(dbmodels.KeyModel, nullable=False)
+    recipient_public_key = db.Column(dbmodels.KeyModel, nullable=False)
     amount = db.Column(db.INTEGER, nullable=False)
     signature = db.Column(db.BINARY, nullable=False)
     block_id = db.Column(dbmodels.UUIDModel, db.ForeignKey("block.uuid"), nullable=True)
@@ -127,7 +127,7 @@ class Block(db.Model):
     # Database Entries
     __tablename__ = "block"
     uuid = db.Column(dbmodels.UUIDModel, primary_key=True)
-    miner_key = db.Column(dbmodels.PublicKeyModel, nullable=True)
+    miner_key = db.Column(dbmodels.KeyModel, nullable=True)
     previous_block_hash = db.Column(db.String(64), nullable=False)
     proof_of_work = db.Column(db.Integer, nullable=True)
     is_mining_block = db.Column(db.Boolean, nullable=False)
@@ -235,13 +235,10 @@ class Block(db.Model):
 
 
 class BlockChain:
-    """Class represents an entire block chain, this class as well acts as a coinbase"""
+    """Class represents an entire block chain, represents methods for the mining into a blockchain"""
 
     def __init__(self):
-        self.transactions = []  # All transactions given to the coinbase not present in the chain
         self.used_block_uuids = set()  # All uuids ever given out for a block generated in this class
-        self.nodes = set()  # All other coinbases (nodes)
-        self.node_uuid = uuid.uuid4()  # uuid of our own coinbase
 
     max_transactions_const = 3  # maximum amount of transactions that can fit into a block
 
@@ -255,7 +252,7 @@ class BlockChain:
             currently_mining_transactions.extend([trans.uuid for trans in block.transactions])
 
         # Now only find the new transactions, these are the ones now that can be put into the block
-        non_mined_transactions = db.session.query(Transaction).filter_by(has_been_mined=False)\
+        non_mined_transactions = db.session.query(Transaction).filter_by(has_been_mined=False) \
             .filter(Transaction.uuid.notin_(currently_mining_transactions)).all()
 
         if len(non_mined_transactions) < 1:
@@ -279,10 +276,6 @@ class BlockChain:
         bad_blocks = Block.query.filter_by(is_mining_block=True).delete()
         print(f"Cleared {bad_blocks} bad blocks")
         db.session.commit()
-
-    def add_transaction(self, transaction: Transaction) -> None:
-        # Function adds a transaction to the coinbase
-        self.transactions.append(transaction)
 
     def find_mine_block(self, block_uuid: uuid) -> Union[Tuple[str, bool, Block], Tuple[str, bool, None]]:
         # Function finds a mining block given the block's uuid
@@ -315,19 +308,85 @@ class BlockChain:
     @staticmethod
     def check_genesis_block():
         # Creates a genesis block with no transactions only if there isn't one
-        if len(Block.query.all()) == 0:
+        if Block.query.count() == 0:
             db.session.add(Block.genesis_block())
             db.session.commit()
 
 
-class Wallet(db.Model):
-    """Class represents a coinbase wallet, of which is an RSA private/public key pair"""
-    public_key = db.Column(dbmodels.PublicKeyModel, primary_key=True)
-    balance = db.Column(db.Integer, nullable=True)
+class CoinBase(db.Model):
+    # Class represents a coinbase with it's own wallet
+    # Coinbases deal with balances of keys, giving users money, etc.
+
+    # DB columns
+    public_key = db.Column(dbmodels.KeyModel, primary_key=True)
+    private_key = db.Column(dbmodels.KeyModel(is_private_key=True), nullable=True)
+    server = db.Column(db.String(60), nullable=True)
+
+    def __init__(self, pkey: Union[None, RSAPublicKey], skey: Union[None, RSAPrivateKey], server: str):
+        self.public_key = pkey
+        self.private_key = skey
+        self.server = server
+
+        # We auto generate the keys if none were provided
+        if pkey is None and skey is None:
+            server_wallet = Wallet()
+            self.public_key = server_wallet.public_key
+            self.private_key = server_wallet.private_key
+
+    def give_key_coins(self, public_key: RSAPublicKey, amount: int) -> None:
+        # Function gives public_key amount number of coins (for free)
+        # Simply makes it a new transaction to be added
+        transaction = Transaction(self.public_key, self.private_key, public_key, amount, uuid.uuid4())
+        transaction.sign()
+        db.session.add(transaction)
+        db.session.commit()
+
+    @classmethod
+    def renew_coinbase(cls, port: int):
+        # Function renews a coinbase from previous runs of the coinbase, it preserves the server's keys
+
+        if CoinBase.query.count() == 0:
+            # No coinbase is there, create one for this server
+            coinbase = CoinBase(None, None, f"http://127.0.0.1:{port}")
+            db.session.add(coinbase)
+            db.session.commit()
+        else:
+            # No other coinbases will give us a private key
+            coinbase = CoinBase.query.filter(CoinBase.private_key.isnot(None)).first()
+        return coinbase
+
+    @staticmethod
+    def get_key_balance(public_key: RSAPublicKey) -> int:
+        # Function gets the balance of a public key
+
+        def none_to_zero(val):
+            # 0 if val is of None type else val
+            return 0 if val is None else val
+
+        # Three ways a key can have balance
+
+        # 1. If they mined blocks, per each block they get rewarded some amount of coins
+        mined_balance = Block.query.filter_by(miner_key=public_key).count() * block_mining_reward
+
+        # 2. If they received coins from someone else in a transaction
+        received_balance = Transaction.query.with_entities(func.sum(Transaction.amount).label("total")) \
+            .filter_by(has_been_mined=True, recipient_public_key=public_key) \
+            .first().total
+
+        # 3. If they've sent coins to someone else
+        sent_balance = Transaction.query.with_entities(func.sum(Transaction.amount).label("total")) \
+            .filter_by(has_been_mined=True, sender_public_key=public_key) \
+            .first().total
+
+        return mined_balance + none_to_zero(received_balance) - none_to_zero(sent_balance)
+
+
+class Wallet:
+    # Class represents a wallet
 
     def __init__(self, generate_keys=True):
         self.private_key = None
-        self.public_key = db.Column(dbmodels.PublicKeyModel, primary_key=True)
+        self.public_key = db.Column(dbmodels.KeyModel, primary_key=True)
         if generate_keys:
             self.private_key = rsa.generate_private_key(
                 public_exponent=65537,
