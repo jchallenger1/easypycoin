@@ -132,6 +132,8 @@ function mine() {
             refreshTransactions();
             if (miningStats.doMine)
                 setTimeout(mine, 250); // give server a bit of breathing room
+            else
+                $("#mine-status").html("Stopped Mining due to a mining failure");
         });
 
     });
