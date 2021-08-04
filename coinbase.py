@@ -214,6 +214,10 @@ def generate_transaction():
     if not transaction.is_valid():
         return "Transaction Signature is not valid", 400
 
+    # Does the user actually have enough for this?
+    if coinbase.get_key_balance(json_post.sender_public_key) - json_post.amount < 0:
+        return "Balance is not sufficient to do this transaction", 400
+
     db_commit_directly(transaction)
     # blockchain.transactions.append(transaction)
 
