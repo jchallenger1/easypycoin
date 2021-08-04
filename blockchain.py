@@ -255,7 +255,7 @@ class BlockChain:
             currently_mining_transactions.extend([trans.uuid for trans in block.transactions])
 
         # Now only find the new transactions, these are the ones now that can be put into the block
-        non_mined_transactions = db.session.query(Transaction).filter_by(has_been_mined=False)\
+        non_mined_transactions = db.session.query(Transaction).filter_by(has_been_mined=False) \
             .filter(Transaction.uuid.notin_(currently_mining_transactions)).all()
 
         if len(non_mined_transactions) < 1:
@@ -318,6 +318,31 @@ class BlockChain:
         if len(Block.query.all()) == 0:
             db.session.add(Block.genesis_block())
             db.session.commit()
+
+    @staticmethod
+    def get_key_balance(public_key: RSAPublicKey) -> int:
+        # Function gets the balance of a public key
+
+        def none_to_zero(val):
+            # 0 if val is of None type else val
+            return 0 if val is None else val
+
+        # Three ways a key can have balance
+
+        # 1. If they mined blocks, per each block they get rewarded some amount of coins
+        mined_balance = Block.query.filter_by(miner_key=public_key).count() * block_mining_reward
+
+        # 2. If they received coins from someone else in a transaction
+        received_balance = Transaction.query.with_entities(func.sum(Transaction.amount).label("total")) \
+            .filter_by(has_been_mined=True, recipient_public_key=public_key) \
+            .first().total
+
+        # 3. If they've sent coins to someone else
+        sent_balance = Transaction.query.with_entities(func.sum(Transaction.amount).label("total")) \
+            .filter_by(has_been_mined=True, sender_public_key=public_key) \
+            .first().total
+
+        return mined_balance + none_to_zero(received_balance) - none_to_zero(sent_balance)
 
 
 class Wallet(db.Model):

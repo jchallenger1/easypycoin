@@ -323,5 +323,10 @@ def get_chain():
     }, default=crypto.serializer), 200
 
 
+@app.route("/debug", methods=["GET"])
+def debug():
+    miner_key = check_public_key(request.args["miner_key"])
+    return str(blockchain.get_key_balance(miner_key)), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
