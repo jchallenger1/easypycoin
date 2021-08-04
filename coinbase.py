@@ -6,6 +6,7 @@ import cryptography.exceptions
 
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from flask import Flask, jsonify, request, render_template
+from sqlalchemy import func
 
 import blockchain as crypto
 from blockchain import Transaction, BlockChain, Block, db
@@ -276,7 +277,37 @@ def give_number_of_zeros():
 @app.route("/api/chain", methods=["GET"])
 def get_chain():
     # Endpoint returns the blocks in the blockchain
-    chain = Block.query.filter_by(is_mining_block=False).all()
+
+    # Support for filtering with query strings
+    # Parse and put the query strings into varaibles
+    query_strings = request.args
+    miner_key = block_index = block_uuid = None
+
+    try:
+        if "miner_key" in query_strings:
+            miner_key = check_public_key(query_strings["miner_key"])
+
+        if "block_index" in query_strings:
+            block_index = check_int(query_strings["block_index"], lower_bound_check=False)
+
+        if "block_uuid" in query_strings:
+            block_uuid = check_uuid(query_strings["block_uuid"])
+    except ValueError as e:
+        return str(e), 400
+
+    # Now apply all filters onto the query, if supplied
+    chain = Block.query.filter_by(is_mining_block=False)
+    if miner_key is not None:
+        chain = chain.filter_by(miner_key=miner_key)
+    if block_index is not None:
+        if block_index == -1:
+            chain = chain.filter_by(index=db.session.query(func.max(Block.index)).scalar())
+        else:
+            chain = chain.filter_by(index=block_index)
+    if block_uuid is not None:
+        chain = chain.filter_by(uuid=block_uuid)
+
+    chain = chain.all()
     return json.dumps({
         "blocks":
             [{
@@ -290,11 +321,6 @@ def get_chain():
             }
                 for block in chain]
     }, default=crypto.serializer), 200
-
-
-@app.route("/api/debug", methods=["GET"])
-def k():
-    chain = Block.query.filter_by(is_mining_block=False).all()
 
 
 if __name__ == '__main__':

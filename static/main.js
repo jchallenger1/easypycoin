@@ -334,16 +334,32 @@ function copyTransactionOnTable() {
 // Occurs when the user presses on the refresh block chain button
 // Simply call the server for the blockchain and put it in the table.
 function refreshBlockChain() {
-    $.getJSON(`${hostname}/api/chain`, (data) => {
+    // Get value of the filters
+    let blockUUID = $("#filter-uuid").val();
+    let minerKey = $("#filter-key").val();
+    let blockIndex = $("#filter-index").val();
+
+    // Create a query string from said filters
+    const params = new URLSearchParams();
+    if (blockUUID) params.set("block_uuid", blockUUID);
+    if (minerKey) params.set("miner_key", minerKey);
+    if (blockIndex) params.set("block_index", blockIndex);
+    const query = params.toString().length === 0 ? "" : "?"+ params.toString();
+
+    // Get the blockchain with any applied filters
+    $.getJSON(`${hostname}/api/chain${query}`, (data) => {
         let table = $("#blockchain-table")
         table.empty()
+
         for (const block of data["blocks"]) {
 
             block["number_of_transactions"] = block["transactions"].length;
             table.append(createHTMLTableStr(block,
                 ["index", "uuid", "hash", "previous_hash", "number_of_transactions", "proof_of_work", "miner_key"],
-                10));
+                15));
         }
+    }).fail((jqxhr) => {
+        $("#messages").append(createHTMLAlertMessage(jqxhr["responseText"]));
     });
 }
 
