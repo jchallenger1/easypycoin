@@ -9,18 +9,21 @@ from flask import Flask, jsonify, request, render_template
 from sqlalchemy import func
 
 import blockchain as crypto
-from blockchain import Transaction, BlockChain, Block, db
+from blockchain import Transaction, BlockChain, CoinBase, Block, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blockchain.sqlite3"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 
+port = 5000
 blockchain = BlockChain()
+coinbase = CoinBase(None, None, "")  # is set in app.app_context()
 
 with app.app_context():
     db.create_all()
     blockchain.check_genesis_block()
+    coinbase.renew_coinbase(port)
 
 """
 General Functions
@@ -137,12 +140,30 @@ def create_new_wallet():
     # Note that typically in a coinbase, the coinbase wouldn't be doing this, but this provides the option
     wallet = crypto.Wallet()
     private_key, public_key = wallet.keys_to_ascii()
-    db_commit_directly(wallet)
     response = {
         "private_key": private_key,
         "public_key": public_key
     }
     return response
+
+
+@app.route("/api/wallet/balance", methods=["GET"])
+def check_wallet_balance():
+    # Endpoint determines a wallet's balance, given a public key
+
+    # Query string checking
+    query_strings = request.args
+    if "public_key" not in query_strings:
+        return "Missing public key", 400
+
+    # string conversion
+    try:
+        public_key = check_public_key(query_strings["public_key"])
+    except ValueError as e:
+        return str(e), 400
+
+    # get balance
+    return str(CoinBase.get_key_balance(public_key)), 200
 
 
 @app.route("/api/transaction/sign", methods=["POST"])
@@ -279,7 +300,7 @@ def get_chain():
     # Endpoint returns the blocks in the blockchain
 
     # Support for filtering with query strings
-    # Parse and put the query strings into varaibles
+    # Parse and put the query strings into variables
     query_strings = request.args
     miner_key = block_index = block_uuid = None
 
@@ -323,10 +344,28 @@ def get_chain():
     }, default=crypto.serializer), 200
 
 
-@app.route("/debug", methods=["GET"])
-def debug():
-    miner_key = check_public_key(request.args["miner_key"])
-    return str(blockchain.get_key_balance(miner_key)), 200
+@app.route("/api/buy", methods=["POST"])
+def buy_coins():
+    # Endpoint gives (free) coins to the user
+
+    # Get data from json supplied data
+    json_request = request.json
+    try:
+        if json_request is None:
+            raise ValueError("Missing json data")
+
+        public_key = check_public_key(json_request["public_key"])
+        if "amount" not in json_request:
+            amount = 10
+        else:
+            amount = check_int(json_request["amount"])
+    except ValueError as e:
+        return str(e), 400
+
+    # Create a brand new transaction
+    coinbase.give_key_coins(public_key, amount)
+    return f"{public_key} received {amount} coins", 200
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=port)
