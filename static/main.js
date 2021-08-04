@@ -363,6 +363,42 @@ function refreshBlockChain() {
     });
 }
 
+
+// Occurs when the user presses on the check balance button on the wallet generator tab
+function checkBalance() {
+    let public_key = $("#public-key-form-walgen").val();
+    $.getJSON(`${hostname}/api/wallet/balance?public_key=${public_key}`, data => {
+        // change to wallet balance
+        $("#wallet-balance").val(data);
+    }).fail(jqxhr => {
+        $("#messages").append(createHTMLAlertMessage(jqxhr["responseText"]));
+    });
+}
+
+// Occurs when the user presses on the give coins button on the wallet generator tab
+function giveCoins() {
+    // Get the key and the amount of coins to give, and send the data
+    let public_key = $("#public-key-form-walgen").val();
+    let amount = $("#wallet-give-coins-amount").val();
+
+    $.ajax({
+        url: `${hostname}/api/buy`,
+        type: "POST",
+        data: JSON.stringify({
+            "public_key": public_key,
+            "amount": amount,
+        }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "text",
+        success: function (data) {
+            // notify they received the coins
+            $("#messages").append(createHTMLAlertMessage(data, "success"));
+        }
+    }).fail(jqxhr => {
+        $("#messages").append(createHTMLAlertMessage(jqxhr["responseText"]));
+    });
+}
+
 //
 // Launcher
 //
@@ -411,6 +447,10 @@ $(document).ready(function () {
     });
 
     $("#refresh-chain-btn").on("click", refreshBlockChain);
+
+    $("#wallet-balance-btn").on("click", checkBalance);
+
+    $("#wallet-give-coins-btn").on("click", giveCoins);
 
 });
 

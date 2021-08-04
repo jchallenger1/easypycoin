@@ -368,7 +368,9 @@ def buy_coins():
 
     # Create a brand new transaction
     coinbase.give_key_coins(public_key, amount)
-    return f"{public_key} received {amount} coins", 200
+    ascii_key = crypto.public_key_to_ascii_key(public_key)
+    msg_key = (ascii_key[:50] + '..') if len(ascii_key) > 50 else ascii_key
+    return f"{msg_key} received {amount} coins", 200
 
 
 if __name__ == '__main__':

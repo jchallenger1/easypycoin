@@ -52,7 +52,7 @@
                 Blockchain Nodes</a>
 
             <a class="flex-sm-fill text-sm-center nav-link" id="stats-tab" data-bs-toggle="tab"
-               data-bs-target="#stats" type="button" role="tab" aria-controls="stats"  aria-selected="false">
+               data-bs-target="#stats" type="button" role="tab" aria-controls="stats" aria-selected="false">
                 Statistics</a>
 
         </div>
@@ -66,14 +66,15 @@
             <h2>Wallet Generator</h2>
             <div class="form-group row p-3">
                 <label for="private-key-form-walgen" class="col-sm-2 col-form-label">Private Key:</label>
-                <textarea readonly class="form-control col-sm-6" id="private-key-form-walgen"></textarea>
+                <textarea class="form-control col-sm-6" id="private-key-form-walgen"></textarea>
             </div>
             <div class="form-group row p-3">
                 <label for="public-key-form-walgen" class="col-sm-2 col-form-label">Public Key:</label>
-                <textarea readonly class="form-control col-sm-6" id="public-key-form-walgen"></textarea>
+                <textarea class="form-control col-sm-6" id="public-key-form-walgen"></textarea>
             </div>
             <div class="text-center">
-                <button type="button" class="btn btn-outline-primary btn-large" id="gen-wallet-btn">Generate Wallet</button>
+                <button type="button" class="btn btn-outline-primary btn-large" id="gen-wallet-btn">Generate Wallet
+                </button>
             </div>
             <div class="alert alert-warning alert-dismissible fade show mt-4" role="alert">
                 Keep your private key secret! Your private key is the method to know you are the owner of your
@@ -82,6 +83,24 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
+
+            <div class="container form-control mt-5" id="div-coinbase">
+                <div class="input-group mb-3 col-4">
+                    <div class="input-group-prepend">
+                        <button class="btn btn-outline-primary" id="wallet-balance-btn" type="button">Check Balance</button>
+                    </div>
+                    <input readonly type="text" class="form-control" placeholder="" aria-label=""
+                           aria-describedby="" id="wallet-balance">
+                </div>
+                <div class="input-group mb-3 col-4">
+                    <div class="input-group-prepend">
+                        <button class="btn btn-outline-primary" id="wallet-give-coins-btn" type="button">Give coins</button>
+                    </div>
+                    <input type="text" class="form-control" placeholder="10" aria-label=""
+                           aria-describedby="" id="wallet-give-coins-amount">
+                </div>
+            </div>
+
         </div>
 
         <!-- Make Transactions Tab -->
@@ -97,7 +116,8 @@
                     <textarea class="form-control col-sm-6" id="public-key-mktrans"></textarea>
                 </div>
                 <div class="form-group row p-3">
-                    <label for="recipient-address-mktrans" class="col-sm-2 col-form-label">Recipient's Public Key:</label>
+                    <label for="recipient-address-mktrans" class="col-sm-2 col-form-label">Recipient's Public
+                        Key:</label>
                     <textarea class="form-control col-sm-6" id="recipient-address-mktrans"></textarea>
                 </div>
                 <div class="form-group row p-3">
@@ -108,9 +128,11 @@
                     <label for="uuidv4-mktrans-form" class="col-sm-2 col-form-label">UUIDV4</label>
                     <input type="text" id="uuidv4-mktrans-form" size="36">
                     <button type="button" class="btn btn-primary" id="refresh-uuidv4-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                             class="bi bi-arrow-repeat" viewBox="0 0 16 16">
                             <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
-                            <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
+                            <path fill-rule="evenodd"
+                                  d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
                         </svg>
                     </button>
                 </div>
@@ -119,8 +141,12 @@
                     <textarea class="form-control col-sm-6" id="signature-mktrans"></textarea>
                 </div>
                 <div class="d-md-flex flex-row justify-content-around col-10">
-                    <button type="button" class="btn btn-outline-primary btn-large" id="sign-trans-btn">Sign Transaction</button>
-                    <button type="button" class="btn btn-outline-primary btn-large" id="broadcast-trans-btn">Broadcast Transaction</button>
+                    <button type="button" class="btn btn-outline-primary btn-large" id="sign-trans-btn">Sign
+                        Transaction
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-large" id="broadcast-trans-btn">Broadcast
+                        Transaction
+                    </button>
                 </div>
             </div>
         </div>
@@ -129,18 +155,20 @@
         <div class="tab-pane fade" id="view-trans" role="tabpanel" aria-labelledby="view-trans-tab">
             <h2 class="text-center">View and Mine Transactions</h2>
             <div class="mb-4">
-                <button type="button" class="btn btn-outline-primary btn-large" id="refresh-trans-button">Refresh Transactions</button>
+                <button type="button" class="btn btn-outline-primary btn-large" id="refresh-trans-button">Refresh
+                    Transactions
+                </button>
             </div>
             <div class="container-fluid table-responsive">
                 <table class="table table-striped table-primary" id="transaction-table">
                     <thead>
-                        <tr>
-                            <th scope="col">UUID</th>
-                            <th scope="col">Sender Public Key</th>
-                            <th scope="col">Recipient Public Key</th>
-                            <th scope="col">Amount</th>
-                            <th scope="col">Actions</th>
-                        </tr>
+                    <tr>
+                        <th scope="col">UUID</th>
+                        <th scope="col">Sender Public Key</th>
+                        <th scope="col">Recipient Public Key</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Actions</th>
+                    </tr>
                     </thead>
                     <tbody id="view-trans-table">
 
@@ -154,19 +182,22 @@
             <div class="container-fluid text-center">
                 <button class="btn btn-outline-primary btn-large p-2" id="mine-btn">Mine Transactions</button>
             </div>
-            <div class="alert alert-primary text-center container mt-5" >
+            <div class="alert alert-primary text-center container mt-5">
                 <div>
                     Status: <b id="mine-status">Not mining</b>
                 </div>
-                <div><button class="btn btn-outline-primary" id="clear-mining-table-btn">Clear Mined Blocks Table</button></div>
+                <div>
+                    <button class="btn btn-outline-primary" id="clear-mining-table-btn">Clear Mined Blocks Table
+                    </button>
+                </div>
             </div>
             <div class="container">
                 <table class="table table-striped table-primary">
                     <thead>
-                        <tr>
-                            <th scope="col">Block UUID</th>
-                            <th scope="col">Message</th>
-                        </tr>
+                    <tr>
+                        <th scope="col">Block UUID</th>
+                        <th scope="col">Message</th>
+                    </tr>
                     </thead>
                     <tbody id="mining-table"></tbody>
                 </table>
@@ -178,21 +209,23 @@
         <div class="tab-pane fade show" id="chain" role="tabpanel" aria-labelledby="chain-tab">
             <h2 class="text-center">View Blocks from Blockchain</h2>
             <div>
-                <button type="button" class="btn btn-outline-primary btn-large mb-4" id="refresh-chain-btn">Refresh Blockchain</button>
+                <button type="button" class="btn btn-outline-primary btn-large mb-4" id="refresh-chain-btn">Refresh
+                    Blockchain
+                </button>
             </div>
             <div class="container-fluid table-responsive">
                 <table class="table table-striped table-primary">
                     <thead>
-                        <tr>
-                            <th scope="col">Index</th>
-                            <th scope="col">UUID</th>
-                            <th scope="col">SHA256 Hash</th>
-                            <th scope="col">Previous SHA256 Hash</th>
-                            <th scope="col">Num. of Transactions</th>
-                            <th scope="col">Proof of Work</th>
-                            <th scope="col">Miner's key</th>
-                            <th scope="col">Actions</th>
-                        </tr>
+                    <tr>
+                        <th scope="col">Index</th>
+                        <th scope="col">UUID</th>
+                        <th scope="col">SHA256 Hash</th>
+                        <th scope="col">Previous SHA256 Hash</th>
+                        <th scope="col">Num. of Transactions</th>
+                        <th scope="col">Proof of Work</th>
+                        <th scope="col">Miner's key</th>
+                        <th scope="col">Actions</th>
+                    </tr>
                     </thead>
                     <tbody id="blockchain-table">
 
@@ -206,19 +239,22 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text" id="filter-block-uuid-text">Block UUID</span>
                         </div>
-                        <input type="text" class="form-control" id="filter-uuid" aria-label="Block UUID" aria-describedby="filter-block-uuid-text">
+                        <input type="text" class="form-control" id="filter-uuid" aria-label="Block UUID"
+                               aria-describedby="filter-block-uuid-text">
                     </div>
                     <div class="input-group mb-3">
                         <div class="input-group-prepend">
                             <span class="input-group-text" id="filter-miner-key">Miner's key</span>
                         </div>
-                        <input type="text" class="form-control" id="filter-key" aria-label="Miner Key" aria-describedby="filter-miner-key">
+                        <input type="text" class="form-control" id="filter-key" aria-label="Miner Key"
+                               aria-describedby="filter-miner-key">
                     </div>
                     <div class="input-group mb-3">
                         <div class="input-group-prepend">
                             <span class="input-group-text" id="filter-blockchain-index">Blockchain index</span>
                         </div>
-                        <input type="text" class="form-control" id="filter-index" aria-label="Blockchain index" aria-describedby="filter-index">
+                        <input type="text" class="form-control" id="filter-index" aria-label="Blockchain index"
+                               aria-describedby="filter-index">
                     </div>
                 </div>
             </div>
