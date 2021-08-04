@@ -3,7 +3,7 @@ import uuid
 
 import sqlalchemy.types as types
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives._serialization import PrivateFormat, NoEncryption
+from cryptography.hazmat.primitives.serialization import PrivateFormat, NoEncryption
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 
